@@ -619,6 +619,29 @@ class Game {
 // ==========================================
 // Launch the game
 // ==========================================
-window.addEventListener('load', () => {
-    new Game();
-});
+function showError(err) {
+    console.error('VOID STRIKER error:', err);
+    const el = document.getElementById('loading');
+    if (el) {
+        el.style.color = '#ff4444';
+        el.innerHTML = 'GAME ERROR<br><span style="font-size:12px;opacity:0.8">' +
+            (err && err.message ? err.message : String(err)) + '</span>';
+    }
+}
+
+window.addEventListener('error', (e) => showError(e.error || e.message));
+window.addEventListener('unhandledrejection', (e) => showError(e.reason));
+
+function launch() {
+    try {
+        new Game();
+    } catch (err) {
+        showError(err);
+    }
+}
+
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    launch();
+} else {
+    window.addEventListener('load', launch);
+}
