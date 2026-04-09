@@ -33,25 +33,11 @@ export class BulletSystem {
         this._playerBulletPool = [];
         this._enemyBulletPool = [];
 
-        // Create bullet geometry templates
-        this._playerBulletGeo = new THREE.PlaneGeometry(0.2, 0.5);
-        this._enemyBulletGeo = new THREE.CircleGeometry(0.15, 6);
-        this._homingBulletGeo = new THREE.PlaneGeometry(0.25, 0.4);
-        this._playerBulletMat = new THREE.MeshBasicMaterial({
-            color: COLORS.PLAYER_BULLET,
-            transparent: true,
-            opacity: 0.9,
-        });
-        this._enemyBulletMat = new THREE.MeshBasicMaterial({
-            color: COLORS.ENEMY_BULLET,
-            transparent: true,
-            opacity: 0.9,
-        });
-        this._homingBulletMat = new THREE.MeshBasicMaterial({
-            color: 0x00ff88,
-            transparent: true,
-            opacity: 0.9,
-        });
+        // Bullet geometry templates - core + glow
+        this._playerCoreGeo = new THREE.PlaneGeometry(0.08, 0.55);
+        this._playerGlowGeo = new THREE.PlaneGeometry(0.35, 0.75);
+        this._enemyCoreGeo = new THREE.CircleGeometry(0.1, 8);
+        this._enemyGlowGeo = new THREE.CircleGeometry(0.22, 12);
 
         // Laser beam mesh
         const laserGeo = new THREE.PlaneGeometry(0.3, CONFIG.GAME_HEIGHT);
@@ -66,18 +52,47 @@ export class BulletSystem {
         this.laserMesh.visible = false;
         scene.add(this.laserMesh);
 
+        // Outer glow (wider, fainter)
+        const laserOuterGeo = new THREE.PlaneGeometry(0.9, CONFIG.GAME_HEIGHT);
+        const laserOuterMat = new THREE.MeshBasicMaterial({
+            color: 0x00aaff,
+            transparent: true,
+            opacity: 0.25,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+        });
+        this.laserOuterMesh = new THREE.Mesh(laserOuterGeo, laserOuterMat);
+        this.laserOuterMesh.position.z = 2.95;
+        this.laserOuterMesh.visible = false;
+        scene.add(this.laserOuterMesh);
+
         // Laser core (brighter, thinner)
-        const laserCoreGeo = new THREE.PlaneGeometry(0.1, CONFIG.GAME_HEIGHT);
+        const laserCoreGeo = new THREE.PlaneGeometry(0.08, CONFIG.GAME_HEIGHT);
         const laserCoreMat = new THREE.MeshBasicMaterial({
             color: 0xffffff,
             transparent: true,
-            opacity: 0.8,
+            opacity: 0.95,
             blending: THREE.AdditiveBlending,
+            depthWrite: false,
         });
         this.laserCoreMesh = new THREE.Mesh(laserCoreGeo, laserCoreMat);
         this.laserCoreMesh.position.z = 3.1;
         this.laserCoreMesh.visible = false;
         scene.add(this.laserCoreMesh);
+
+        // Impact flare at player nose
+        const flareGeo = new THREE.CircleGeometry(0.4, 16);
+        const flareMat = new THREE.MeshBasicMaterial({
+            color: 0x88ddff,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+        });
+        this.laserFlare = new THREE.Mesh(flareGeo, flareMat);
+        this.laserFlare.position.z = 3.2;
+        this.laserFlare.visible = false;
+        scene.add(this.laserFlare);
 
         // Pre-allocate pools
         for (let i = 0; i < 100; i++) {
@@ -91,10 +106,29 @@ export class BulletSystem {
     _createPlayerBullet() {
         const bullet = new Bullet();
         bullet.type = BULLET_PLAYER;
-        bullet.mesh = new THREE.Mesh(this._playerBulletGeo, this._playerBulletMat.clone());
+
+        // Glow layer (wide, additive)
+        const glowMat = new THREE.MeshBasicMaterial({
+            color: COLORS.PLAYER_BULLET,
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+        });
+        bullet.glowMesh = new THREE.Mesh(this._playerGlowGeo, glowMat);
+        bullet.glowMesh.position.z = 1.9;
+        bullet.glowMesh.visible = false;
+        this.scene.add(bullet.glowMesh);
+
+        // Core (bright white)
+        const coreMat = new THREE.MeshBasicMaterial({
+            color: COLORS.PLAYER_BULLET_CORE,
+        });
+        bullet.mesh = new THREE.Mesh(this._playerCoreGeo, coreMat);
         bullet.mesh.position.z = 2;
         bullet.mesh.visible = false;
         this.scene.add(bullet.mesh);
+
         this._playerBulletPool.push(bullet);
         return bullet;
     }
@@ -102,10 +136,29 @@ export class BulletSystem {
     _createEnemyBullet() {
         const bullet = new Bullet();
         bullet.type = BULLET_ENEMY;
-        bullet.mesh = new THREE.Mesh(this._enemyBulletGeo, this._enemyBulletMat.clone());
+
+        // Glow
+        const glowMat = new THREE.MeshBasicMaterial({
+            color: COLORS.ENEMY_BULLET,
+            transparent: true,
+            opacity: 0.55,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+        });
+        bullet.glowMesh = new THREE.Mesh(this._enemyGlowGeo, glowMat);
+        bullet.glowMesh.position.z = 1.9;
+        bullet.glowMesh.visible = false;
+        this.scene.add(bullet.glowMesh);
+
+        // Core
+        const coreMat = new THREE.MeshBasicMaterial({
+            color: COLORS.ENEMY_BULLET_CORE,
+        });
+        bullet.mesh = new THREE.Mesh(this._enemyCoreGeo, coreMat);
         bullet.mesh.position.z = 2;
         bullet.mesh.visible = false;
         this.scene.add(bullet.mesh);
+
         this._enemyBulletPool.push(bullet);
         return bullet;
     }
@@ -207,11 +260,14 @@ export class BulletSystem {
         b.vx = vx;
         b.vy = vy;
         b.damage = damage;
-        b.size = 0.15;
+        b.size = 0.18;
         b.isHoming = false;
         b.mesh.visible = true;
-        b.mesh.material.color.setHex(COLORS.PLAYER_BULLET);
+        b.glowMesh.visible = true;
+        b.mesh.material.color.setHex(COLORS.PLAYER_BULLET_CORE);
+        b.glowMesh.material.color.setHex(COLORS.PLAYER_BULLET);
         b.mesh.position.set(x, y, 2);
+        b.glowMesh.position.set(x, y, 1.9);
     }
 
     _spawnHomingBullet(x, y, damage) {
@@ -222,11 +278,14 @@ export class BulletSystem {
         b.vx = (Math.random() - 0.5) * 5;
         b.vy = CONFIG.PLAYER_BULLET_SPEED * 0.5;
         b.damage = damage;
-        b.size = 0.2;
+        b.size = 0.22;
         b.isHoming = true;
         b.mesh.visible = true;
-        b.mesh.material.color.setHex(0x00ff88);
+        b.glowMesh.visible = true;
+        b.mesh.material.color.setHex(0xffffff);
+        b.glowMesh.material.color.setHex(0x00ff88);
         b.mesh.position.set(x, y, 2);
+        b.glowMesh.position.set(x, y, 1.9);
     }
 
     // Fire enemy bullet
@@ -239,7 +298,9 @@ export class BulletSystem {
         b.vy = vy;
         b.damage = damage;
         b.mesh.visible = true;
+        b.glowMesh.visible = true;
         b.mesh.position.set(x, y, 2);
+        b.glowMesh.position.set(x, y, 1.9);
     }
 
     // Fire aimed shot at player
@@ -295,10 +356,12 @@ export class BulletSystem {
             b.x += b.vx * dt;
             b.y += b.vy * dt;
             b.mesh.position.set(b.x, b.y, 2);
+            if (b.glowMesh) b.glowMesh.position.set(b.x, b.y, 1.9);
 
             if (b.y > bounds || b.y < -bounds || b.x > boundsW || b.x < -boundsW) {
                 b.active = false;
                 b.mesh.visible = false;
+                if (b.glowMesh) b.glowMesh.visible = false;
             }
         }
 
@@ -308,29 +371,43 @@ export class BulletSystem {
             b.x += b.vx * dt;
             b.y += b.vy * dt;
             b.mesh.position.set(b.x, b.y, 2);
+            if (b.glowMesh) b.glowMesh.position.set(b.x, b.y, 1.9);
 
             if (b.y > bounds || b.y < -bounds || b.x > boundsW || b.x < -boundsW) {
                 b.active = false;
                 b.mesh.visible = false;
+                if (b.glowMesh) b.glowMesh.visible = false;
             }
         }
 
-        // Update laser
+        // Update laser - 4 layered meshes
         if (this.laserActive) {
             this.laserMesh.visible = true;
             this.laserCoreMesh.visible = true;
-            this.laserMesh.position.x = playerX;
-            this.laserMesh.position.y = playerY + CONFIG.GAME_HEIGHT / 2;
-            this.laserCoreMesh.position.x = playerX;
-            this.laserCoreMesh.position.y = playerY + CONFIG.GAME_HEIGHT / 2;
-            // Flicker effect
-            this.laserMesh.material.opacity = 0.4 + Math.random() * 0.3;
-            this.laserCoreMesh.material.opacity = 0.6 + Math.random() * 0.3;
-            const widthPulse = 0.2 + Math.random() * 0.15;
-            this.laserMesh.scale.x = widthPulse / 0.3;
+            this.laserOuterMesh.visible = true;
+            this.laserFlare.visible = true;
+
+            // Energy vibration jitter
+            const jitterX = playerX + (Math.random() - 0.5) * 0.05;
+            const yPos = playerY + CONFIG.GAME_HEIGHT / 2;
+
+            this.laserMesh.position.set(jitterX, yPos, 3);
+            this.laserCoreMesh.position.set(jitterX, yPos, 3.1);
+            this.laserOuterMesh.position.set(jitterX, yPos, 2.95);
+            this.laserFlare.position.set(playerX, playerY + 0.7, 3.2);
+
+            // Flicker
+            this.laserMesh.material.opacity = 0.45 + Math.random() * 0.25;
+            this.laserCoreMesh.material.opacity = 0.8 + Math.random() * 0.2;
+            this.laserOuterMesh.material.opacity = 0.2 + Math.random() * 0.15;
+            const flareScale = 0.9 + Math.random() * 0.4;
+            this.laserFlare.scale.set(flareScale, flareScale, 1);
+            this.laserFlare.material.opacity = 0.7 + Math.random() * 0.3;
         } else {
             this.laserMesh.visible = false;
             this.laserCoreMesh.visible = false;
+            this.laserOuterMesh.visible = false;
+            this.laserFlare.visible = false;
         }
         // Reset laser each frame (must be re-activated by firing)
         this.laserActive = false;
@@ -357,25 +434,30 @@ export class BulletSystem {
     deactivateBullet(bullet) {
         bullet.active = false;
         bullet.mesh.visible = false;
+        if (bullet.glowMesh) bullet.glowMesh.visible = false;
     }
 
     clearAll() {
         for (const b of this._playerBulletPool) {
             b.active = false;
             b.mesh.visible = false;
+            if (b.glowMesh) b.glowMesh.visible = false;
         }
         for (const b of this._enemyBulletPool) {
             b.active = false;
             b.mesh.visible = false;
+            if (b.glowMesh) b.glowMesh.visible = false;
         }
         this.laserMesh.visible = false;
         this.laserCoreMesh.visible = false;
+        if (this.laserOuterMesh) this.laserOuterMesh.visible = false;
     }
 
     clearEnemyBullets() {
         for (const b of this._enemyBulletPool) {
             b.active = false;
             b.mesh.visible = false;
+            if (b.glowMesh) b.glowMesh.visible = false;
         }
     }
 }

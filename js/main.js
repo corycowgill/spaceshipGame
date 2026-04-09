@@ -192,6 +192,7 @@ class Game {
         if (this.stateTimer >= CONFIG.BOSS_WARNING_TIME) {
             this._setState(GAME_STATE.BOSS_FIGHT);
             this.boss = new Boss(this.scene, this.currentStage);
+            this.boss.setParticleSystem(this.particles);
             this.audio.startMusic(this.currentStage);
         }
     }
@@ -411,7 +412,7 @@ class Game {
                     if (destroyed) {
                         this._onEnemyDestroyed(enemy);
                     } else {
-                        this.particles.explode(bullet.x, bullet.y, 3, 0.3);
+                        this.particles.hitSpark(bullet.x, bullet.y);
                     }
                     break;
                 }
@@ -455,7 +456,7 @@ class Game {
             if (this._aabb(bulletBounds, bb)) {
                 this.bullets.deactivateBullet(bullet);
                 this.boss.takeDamage(bullet.damage);
-                this.particles.explode(bullet.x, bullet.y, 3, 0.3);
+                this.particles.hitSpark(bullet.x, bullet.y);
             }
         }
 
@@ -534,8 +535,12 @@ class Game {
 
     _onEnemyDestroyed(enemy) {
         this.score += enemy.score;
-        this.particles.explode(enemy.x, enemy.y, CONFIG.EXPLOSION_PARTICLE_COUNT, 1);
+        const scale = enemy.size > 1.2 ? 1.4 : 1.0;
+        this.particles.explode(enemy.x, enemy.y, CONFIG.EXPLOSION_PARTICLE_COUNT, scale);
         this.audio.explosion();
+        if (enemy.size > 1.2) {
+            this.hud.shake(3, 0.15);
+        }
 
         // Power-up drop
         if (Math.random() < CONFIG.POWERUP_DROP_CHANCE) {

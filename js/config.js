@@ -58,34 +58,62 @@ export const WEAPON_TYPES = {
 export const WEAPON_NAMES = ['SINGLE', 'SPREAD', 'SIDE', 'REAR', 'LASER', 'HOMING'];
 
 export const COLORS = {
-    // Player
-    PLAYER_BODY: 0x00bbff,
-    PLAYER_WING: 0x0088cc,
+    // Player - cyan body, hot magenta accent (reserved for player only)
+    PLAYER_BODY: 0x00ccff,
+    PLAYER_WING: 0x0066aa,
+    PLAYER_HULL: 0x002244,
+    PLAYER_COCKPIT: 0xff00ff,
     PLAYER_ENGINE: 0x00ffff,
+    PLAYER_GLOW: 0x00aaff,
     PLAYER_BULLET: 0x00ffee,
+    PLAYER_BULLET_CORE: 0xffffff,
 
-    // Enemies
-    ENEMY_FIGHTER: 0xff2266,
-    ENEMY_CRUISER: 0xcc44ff,
+    // Outlines for that 16-bit "sprite" look
+    OUTLINE: 0x000011,
+
+    // Enemies - distinct hues, no magenta (reserved for player)
+    ENEMY_FIGHTER: 0xff3322,
+    ENEMY_FIGHTER_DARK: 0x661100,
+    ENEMY_FIGHTER_CORE: 0xffaa00,
+    ENEMY_CRUISER: 0x2266ff,
+    ENEMY_CRUISER_DARK: 0x001144,
+    ENEMY_CRUISER_CORE: 0x66ccff,
     ENEMY_TURRET: 0xff8800,
-    ENEMY_BULLET: 0xff3366,
+    ENEMY_TURRET_DARK: 0x442200,
+    ENEMY_TURRET_CORE: 0xffdd44,
+    ENEMY_BOMBER: 0xffaa00,
+    ENEMY_BOMBER_DARK: 0x553300,
+    ENEMY_BOMBER_CORE: 0xffffaa,
+    ENEMY_DART: 0xdd00aa,
+    ENEMY_DART_DARK: 0x440033,
+    ENEMY_DART_CORE: 0xffffff,
+    ENEMY_BULLET: 0xff4466,
+    ENEMY_BULLET_CORE: 0xffcccc,
 
-    // Bosses
-    BOSS_BODY: 0x8833ff,
+    // Bosses - deep violet with magenta glow
+    BOSS_BODY: 0x3a0080,
+    BOSS_BODY_DARK: 0x110022,
     BOSS_ACCENT: 0xff00aa,
+    BOSS_PORT: 0xff2244,
 
-    // Effects
+    // Powerups
     POWERUP_WEAPON: 0x00ff88,
     POWERUP_UPGRADE: 0xffdd00,
     POWERUP_LIFE: 0xff4488,
+
+    // Explosions - age-based ramp
+    EXPLOSION_WHITE: 0xffffff,
     EXPLOSION_CORE: 0xffffaa,
     EXPLOSION_MID: 0xffaa00,
     EXPLOSION_OUTER: 0xff3300,
+    EXPLOSION_DEBRIS: 0x332222,
 
     // Background
     STAR_BRIGHT: 0xffffff,
-    STAR_MID: 0x8888cc,
-    STAR_DIM: 0x444466,
+    STAR_MID: 0xaaaaff,
+    STAR_DIM: 0x334466,
+    NEBULA_BLUE: 0x2244aa,
+    NEBULA_MAGENTA: 0x882266,
 };
 
 export const GAME_STATE = {

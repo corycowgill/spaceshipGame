@@ -169,8 +169,38 @@ export class Boss {
         this.targetY = CONFIG.GAME_HEIGHT / 2 - 5;
         this.entering = true;
 
-        // Create mesh
+        this.config = config;
+        this.bodyColor = new THREE.Color(config.color);
+        this.damageColor = new THREE.Color(0xff3300);
+        this.hitFlashTimer = 0;
+
         const geometry = createBossGeometry(stageIndex);
+
+        // Outer halo (big additive bloom)
+        const haloGeo = new THREE.CircleGeometry(config.size * 1.8, 32);
+        const haloMat = new THREE.MeshBasicMaterial({
+            color: config.accentColor,
+            transparent: true,
+            opacity: 0.15,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+        });
+        this.halo = new THREE.Mesh(haloGeo, haloMat);
+        this.halo.position.set(this.x, this.y, 0.8);
+        scene.add(this.halo);
+
+        // Outline layer
+        const outlineMat = new THREE.MeshBasicMaterial({
+            color: COLORS.OUTLINE,
+            side: THREE.DoubleSide,
+        });
+        this.outline = new THREE.Mesh(geometry, outlineMat);
+        this.outline.scale.set(config.size * 1.1, config.size * 1.1, 1);
+        this.outline.position.set(this.x, this.y, 0.9);
+        this.outline.rotation.z = Math.PI;
+        scene.add(this.outline);
+
+        // Main body
         const material = new THREE.MeshBasicMaterial({
             color: config.color,
             side: THREE.DoubleSide,
@@ -181,11 +211,22 @@ export class Boss {
         this.mesh.rotation.z = Math.PI;
         scene.add(this.mesh);
 
-        // Accent details
+        // Dark inner layer for depth
+        const innerMat = new THREE.MeshBasicMaterial({
+            color: config.darkColor || 0x110022,
+            side: THREE.DoubleSide,
+        });
+        this.inner = new THREE.Mesh(geometry, innerMat);
+        this.inner.scale.set(config.size * 0.7, config.size * 0.7, 1);
+        this.inner.position.set(this.x, this.y, 1.05);
+        this.inner.rotation.z = Math.PI;
+        scene.add(this.inner);
+
+        // Rotating accent diamond (core)
         const accentShape = new THREE.Shape();
-        accentShape.moveTo(0, -0.3);
+        accentShape.moveTo(0, -0.4);
         accentShape.lineTo(0.3, 0);
-        accentShape.lineTo(0, 0.3);
+        accentShape.lineTo(0, 0.4);
         accentShape.lineTo(-0.3, 0);
         accentShape.closePath();
         const accentGeo = new THREE.ShapeGeometry(accentShape);
@@ -193,12 +234,39 @@ export class Boss {
             color: config.accentColor,
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 0.8,
+            opacity: 0.95,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
         });
         this.accent = new THREE.Mesh(accentGeo, accentMat);
-        this.accent.position.z = 1.1;
+        this.accent.position.z = 1.12;
         this.accent.scale.set(config.size * 0.6, config.size * 0.6, 1);
         scene.add(this.accent);
+
+        // Weapon ports (4 pulsing circles at cardinal offsets)
+        this.ports = [];
+        const portOffsets = [
+            { x: -0.8, y: -0.3 },
+            { x: 0.8, y: -0.3 },
+            { x: -0.5, y: 0.6 },
+            { x: 0.5, y: 0.6 },
+        ];
+        for (const off of portOffsets) {
+            const portGeo = new THREE.CircleGeometry(0.12, 10);
+            const portMat = new THREE.MeshBasicMaterial({
+                color: COLORS.BOSS_PORT,
+                transparent: true,
+                opacity: 0.9,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+            });
+            const port = new THREE.Mesh(portGeo, portMat);
+            port.userData.offset = off;
+            port.scale.set(config.size, config.size, 1);
+            port.position.z = 1.15;
+            scene.add(port);
+            this.ports.push(port);
+        }
 
         // Engine glow
         const glowGeo = new THREE.CircleGeometry(0.5, 16);
@@ -207,9 +275,10 @@ export class Boss {
             transparent: true,
             opacity: 0.3,
             blending: THREE.AdditiveBlending,
+            depthWrite: false,
         });
         this.glow = new THREE.Mesh(glowGeo, glowMat);
-        this.glow.position.z = 0.9;
+        this.glow.position.set(this.x, this.y, 0.9);
         this.glow.scale.set(config.size, config.size, 1);
         scene.add(this.glow);
     }
@@ -252,18 +321,57 @@ export class Boss {
         this.glow.material.opacity = 0.2 * pulse;
         this.glow.scale.set(this.size * pulse, this.size * pulse, 1);
         this.accent.rotation.z = this.age * 1.5;
+        this.accent.material.opacity = 0.8 + Math.sin(this.age * 4) * 0.15;
 
-        // Flash red when low HP
-        if (hpRatio < 0.3) {
-            if (Math.floor(this.age * 5) % 2 === 0) {
-                this.mesh.material.color.setHex(0xff0000);
-            } else {
-                this.mesh.material.color.setHex(BOSS_CONFIGS[this.stageIndex]?.color || COLORS.BOSS_BODY);
-            }
+        // Halo pulse
+        if (this.halo) {
+            const haloPulse = 1 + Math.sin(this.age * 1.5) * 0.08;
+            this.halo.scale.set(haloPulse, haloPulse, 1);
+            this.halo.material.opacity = 0.12 + Math.sin(this.age * 2) * 0.05;
+        }
+
+        // Weapon ports pulse brighter near firing
+        const portPulse = Math.max(0, 1 - this.fireTimer * 3);
+        for (const port of this.ports) {
+            port.material.opacity = 0.4 + portPulse * 0.6;
+            const ps = 1 + portPulse * 0.5;
+            port.scale.set(this.size * ps, this.size * ps, 1);
+        }
+
+        // Damage color lerp - body gets redder as HP drops
+        const damage = 1 - hpRatio;
+        const cur = new THREE.Color().copy(this.bodyColor).lerp(this.damageColor, damage * 0.7);
+
+        // Hit flash overlay
+        if (this.hitFlashTimer > 0) {
+            this.hitFlashTimer -= dt;
+            const flashT = Math.max(0, this.hitFlashTimer / 0.06);
+            cur.lerp(new THREE.Color(0xffffff), flashT);
+        }
+
+        // Low HP flicker
+        if (hpRatio < 0.3 && Math.floor(this.age * 8) % 2 === 0) {
+            cur.lerp(new THREE.Color(0xff2200), 0.4);
+        }
+
+        if (this.mesh && this.mesh.material) {
+            this.mesh.material.color.copy(cur);
+        }
+
+        // Emit sparks when heavily damaged
+        if (hpRatio < 0.5 && Math.random() < 0.1 && this._particles) {
+            this._particles.explode(
+                this.x + (Math.random() - 0.5) * this.size * 2,
+                this.y + (Math.random() - 0.5) * this.size * 2,
+                3, 0.4,
+            );
         }
 
         this._syncPosition();
     }
+
+    // Injected by game loop so boss can spawn damage sparks
+    setParticleSystem(p) { this._particles = p; }
 
     _updateMovement(dt, playerX) {
         // Sway back and forth, more aggressive in later phases
@@ -457,17 +565,7 @@ export class Boss {
 
     takeDamage(damage) {
         this.hp -= damage;
-        // Flash
-        if (this.mesh && this.mesh.material) {
-            this.mesh.material.color.setHex(0xffffff);
-            setTimeout(() => {
-                if (this.mesh && this.mesh.material) {
-                    this.mesh.material.color.setHex(
-                        BOSS_CONFIGS[this.stageIndex]?.color || COLORS.BOSS_BODY
-                    );
-                }
-            }, 30);
-        }
+        this.hitFlashTimer = 0.06;
         if (this.hp <= 0) {
             this.active = false;
             return true;
@@ -481,36 +579,47 @@ export class Boss {
     }
 
     _syncPosition() {
-        if (this.mesh) {
-            this.mesh.position.set(this.x, this.y, 1);
-        }
-        if (this.accent) {
-            this.accent.position.set(this.x, this.y, 1.1);
-        }
-        if (this.glow) {
-            this.glow.position.set(this.x, this.y, 0.9);
+        if (this.mesh) this.mesh.position.set(this.x, this.y, 1);
+        if (this.outline) this.outline.position.set(this.x, this.y, 0.9);
+        if (this.inner) this.inner.position.set(this.x, this.y, 1.05);
+        if (this.accent) this.accent.position.set(this.x, this.y, 1.12);
+        if (this.glow) this.glow.position.set(this.x, this.y, 0.9);
+        if (this.halo) this.halo.position.set(this.x, this.y, 0.8);
+        if (this.ports) {
+            for (const port of this.ports) {
+                const off = port.userData.offset;
+                port.position.set(
+                    this.x + off.x * this.size,
+                    this.y + off.y * this.size,
+                    1.15,
+                );
+            }
         }
     }
 
     destroy() {
         this.active = false;
-        if (this.mesh) {
-            this.scene.remove(this.mesh);
-            this.mesh.geometry.dispose();
-            this.mesh.material.dispose();
-            this.mesh = null;
+        const rm = (m) => {
+            if (!m) return;
+            this.scene.remove(m);
+            if (m.geometry) m.geometry.dispose();
+            if (m.material) m.material.dispose();
+        };
+        rm(this.mesh);
+        rm(this.outline);
+        rm(this.inner);
+        rm(this.accent);
+        rm(this.glow);
+        rm(this.halo);
+        if (this.ports) {
+            for (const p of this.ports) rm(p);
+            this.ports = null;
         }
-        if (this.accent) {
-            this.scene.remove(this.accent);
-            this.accent.geometry.dispose();
-            this.accent.material.dispose();
-            this.accent = null;
-        }
-        if (this.glow) {
-            this.scene.remove(this.glow);
-            this.glow.geometry.dispose();
-            this.glow.material.dispose();
-            this.glow = null;
-        }
+        this.mesh = null;
+        this.outline = null;
+        this.inner = null;
+        this.accent = null;
+        this.glow = null;
+        this.halo = null;
     }
 }

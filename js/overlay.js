@@ -43,6 +43,9 @@ export class HUD {
             case GAME_STATE.BOSS_WARNING:
             case GAME_STATE.BOSS_FIGHT:
                 this._drawGameHUD(ctx, w, h, game);
+                if (game.input && game.input.isTouchDevice) {
+                    this._drawTouchControls(ctx, w, h, game);
+                }
                 break;
             case GAME_STATE.STAGE_INTRO:
                 this._drawGameHUD(ctx, w, h, game);
@@ -113,18 +116,24 @@ export class HUD {
         ctx.fillText('- DEFEND THE GALAXY -', w / 2, h * 0.38);
 
         // Blinking start text
+        const isTouch = game.input && game.input.isTouchDevice;
         if (Math.floor(game.stateTimer * 2) % 2 === 0) {
             ctx.fillStyle = '#ffffff';
-            ctx.font = '20px "Courier New", monospace';
-            ctx.fillText('PRESS ENTER OR SPACE TO START', w / 2, h * 0.55);
+            ctx.font = '18px "Courier New", monospace';
+            ctx.fillText(isTouch ? 'TAP TO START' : 'PRESS ENTER OR SPACE TO START', w / 2, h * 0.55);
         }
 
         // Controls
         ctx.fillStyle = '#888888';
         ctx.font = '14px "Courier New", monospace';
-        ctx.fillText('ARROW KEYS / WASD - MOVE', w / 2, h * 0.70);
-        ctx.fillText('SPACE / Z - FIRE', w / 2, h * 0.74);
-        ctx.fillText('P / ESC - PAUSE', w / 2, h * 0.78);
+        if (isTouch) {
+            ctx.fillText('LEFT HALF - VIRTUAL JOYSTICK', w / 2, h * 0.70);
+            ctx.fillText('RIGHT HALF - FIRE', w / 2, h * 0.74);
+        } else {
+            ctx.fillText('ARROW KEYS / WASD - MOVE', w / 2, h * 0.70);
+            ctx.fillText('SPACE / Z - FIRE', w / 2, h * 0.74);
+            ctx.fillText('P / ESC - PAUSE', w / 2, h * 0.78);
+        }
 
         // High score
         if (game.highScore > 0) {
@@ -319,6 +328,61 @@ export class HUD {
             }
         }
         ctx.globalAlpha = 1;
+        ctx.restore();
+    }
+
+    _drawTouchControls(ctx, w, h, game) {
+        ctx.save();
+
+        // Virtual joystick - bottom left
+        const jx = w * 0.18;
+        const jy = h * 0.82;
+        const outerR = w * 0.09;
+        const innerR = w * 0.04;
+
+        ctx.strokeStyle = 'rgba(0, 221, 255, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(jx, jy, outerR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Joystick knob position
+        let kx = jx, ky = jy;
+        if (game.input.touchActive) {
+            kx = jx + game.input.touchDx * outerR * 0.8;
+            ky = jy - game.input.touchDy * outerR * 0.8;
+        }
+        ctx.fillStyle = 'rgba(0, 221, 255, 0.4)';
+        ctx.beginPath();
+        ctx.arc(kx, ky, innerR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0, 255, 255, 0.9)';
+        ctx.beginPath();
+        ctx.arc(kx, ky, innerR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Fire button - bottom right
+        const bx = w * 0.82;
+        const by = h * 0.82;
+        const br = w * 0.075;
+        ctx.fillStyle = game.input.touchFire
+            ? 'rgba(255, 68, 170, 0.6)'
+            : 'rgba(255, 68, 170, 0.3)';
+        ctx.beginPath();
+        ctx.arc(bx, by, br, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 0, 170, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(bx, by, br, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 14px "Courier New", monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('FIRE', bx, by);
+
         ctx.restore();
     }
 

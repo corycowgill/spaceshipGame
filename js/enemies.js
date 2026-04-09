@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { CONFIG, COLORS } from './config.js';
 
-// Enemy types
 export const ENEMY_TYPE = {
     FIGHTER: 'fighter',
     CRUISER: 'cruiser',
@@ -10,16 +9,16 @@ export const ENEMY_TYPE = {
     DART: 'dart',
 };
 
-// Create enemy ship geometries
+// --------- Geometries ---------
 function createFighterGeometry() {
     const shape = new THREE.Shape();
     shape.moveTo(0, -0.5);
     shape.lineTo(0.4, -0.1);
-    shape.lineTo(0.7, 0.3);
+    shape.lineTo(0.75, 0.35);
     shape.lineTo(0.3, 0.2);
     shape.lineTo(0, 0.5);
     shape.lineTo(-0.3, 0.2);
-    shape.lineTo(-0.7, 0.3);
+    shape.lineTo(-0.75, 0.35);
     shape.lineTo(-0.4, -0.1);
     shape.closePath();
     return new THREE.ShapeGeometry(shape);
@@ -27,31 +26,31 @@ function createFighterGeometry() {
 
 function createCruiserGeometry() {
     const shape = new THREE.Shape();
-    shape.moveTo(0, -0.7);
-    shape.lineTo(0.3, -0.4);
-    shape.lineTo(0.5, -0.1);
-    shape.lineTo(0.8, 0.2);
-    shape.lineTo(0.6, 0.4);
-    shape.lineTo(0.4, 0.3);
-    shape.lineTo(0.2, 0.6);
-    shape.lineTo(0, 0.5);
-    shape.lineTo(-0.2, 0.6);
-    shape.lineTo(-0.4, 0.3);
-    shape.lineTo(-0.6, 0.4);
-    shape.lineTo(-0.8, 0.2);
-    shape.lineTo(-0.5, -0.1);
-    shape.lineTo(-0.3, -0.4);
+    shape.moveTo(0, -0.8);
+    shape.lineTo(0.35, -0.5);
+    shape.lineTo(0.55, -0.1);
+    shape.lineTo(0.9, 0.25);
+    shape.lineTo(0.7, 0.45);
+    shape.lineTo(0.45, 0.35);
+    shape.lineTo(0.25, 0.7);
+    shape.lineTo(0, 0.55);
+    shape.lineTo(-0.25, 0.7);
+    shape.lineTo(-0.45, 0.35);
+    shape.lineTo(-0.7, 0.45);
+    shape.lineTo(-0.9, 0.25);
+    shape.lineTo(-0.55, -0.1);
+    shape.lineTo(-0.35, -0.5);
     shape.closePath();
     return new THREE.ShapeGeometry(shape);
 }
 
 function createTurretGeometry() {
     const shape = new THREE.Shape();
-    // Hexagonal base
-    for (let i = 0; i < 6; i++) {
-        const angle = (i / 6) * Math.PI * 2;
-        const x = Math.cos(angle) * 0.5;
-        const y = Math.sin(angle) * 0.5;
+    for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const r = i % 2 === 0 ? 0.55 : 0.45;
+        const x = Math.cos(angle) * r;
+        const y = Math.sin(angle) * r;
         if (i === 0) shape.moveTo(x, y);
         else shape.lineTo(x, y);
     }
@@ -59,28 +58,80 @@ function createTurretGeometry() {
     return new THREE.ShapeGeometry(shape);
 }
 
+function createTurretBarrelGeometry() {
+    const shape = new THREE.Shape();
+    shape.moveTo(-0.08, -0.1);
+    shape.lineTo(0.08, -0.1);
+    shape.lineTo(0.08, 0.45);
+    shape.lineTo(-0.08, 0.45);
+    shape.closePath();
+    return new THREE.ShapeGeometry(shape);
+}
+
 function createBomberGeometry() {
     const shape = new THREE.Shape();
-    shape.moveTo(0, -0.4);
-    shape.lineTo(0.6, 0);
-    shape.lineTo(0.5, 0.4);
-    shape.lineTo(0, 0.3);
-    shape.lineTo(-0.5, 0.4);
-    shape.lineTo(-0.6, 0);
+    shape.moveTo(0, -0.5);
+    shape.lineTo(0.3, -0.3);
+    shape.lineTo(0.8, 0.05);
+    shape.lineTo(0.7, 0.45);
+    shape.lineTo(0.3, 0.3);
+    shape.lineTo(0, 0.4);
+    shape.lineTo(-0.3, 0.3);
+    shape.lineTo(-0.7, 0.45);
+    shape.lineTo(-0.8, 0.05);
+    shape.lineTo(-0.3, -0.3);
     shape.closePath();
     return new THREE.ShapeGeometry(shape);
 }
 
 function createDartGeometry() {
     const shape = new THREE.Shape();
-    shape.moveTo(0, -0.6);
-    shape.lineTo(0.25, 0.1);
-    shape.lineTo(0.5, 0.4);
-    shape.lineTo(0, 0.2);
-    shape.lineTo(-0.5, 0.4);
-    shape.lineTo(-0.25, 0.1);
+    shape.moveTo(0, -0.75);
+    shape.lineTo(0.2, 0.05);
+    shape.lineTo(0.5, 0.35);
+    shape.lineTo(0, 0.15);
+    shape.lineTo(-0.5, 0.35);
+    shape.lineTo(-0.2, 0.05);
     shape.closePath();
     return new THREE.ShapeGeometry(shape);
+}
+
+// Inner-detail geometries (darker layer on top of main body)
+function createFighterInner() {
+    const s = new THREE.Shape();
+    s.moveTo(0, -0.3);
+    s.lineTo(0.2, 0.0);
+    s.lineTo(0, 0.25);
+    s.lineTo(-0.2, 0.0);
+    s.closePath();
+    return new THREE.ShapeGeometry(s);
+}
+function createCruiserInner() {
+    const s = new THREE.Shape();
+    s.moveTo(0, -0.5);
+    s.lineTo(0.3, -0.1);
+    s.lineTo(0.2, 0.3);
+    s.lineTo(-0.2, 0.3);
+    s.lineTo(-0.3, -0.1);
+    s.closePath();
+    return new THREE.ShapeGeometry(s);
+}
+function createBomberInner() {
+    const s = new THREE.Shape();
+    s.moveTo(-0.4, -0.1);
+    s.lineTo(0.4, -0.1);
+    s.lineTo(0.3, 0.2);
+    s.lineTo(-0.3, 0.2);
+    s.closePath();
+    return new THREE.ShapeGeometry(s);
+}
+function createDartInner() {
+    const s = new THREE.Shape();
+    s.moveTo(0, -0.5);
+    s.lineTo(0.1, 0.0);
+    s.lineTo(-0.1, 0.0);
+    s.closePath();
+    return new THREE.ShapeGeometry(s);
 }
 
 const GEOMETRY_MAP = {
@@ -91,12 +142,20 @@ const GEOMETRY_MAP = {
     [ENEMY_TYPE.DART]: createDartGeometry,
 };
 
+const INNER_GEOMETRY_MAP = {
+    [ENEMY_TYPE.FIGHTER]: createFighterInner,
+    [ENEMY_TYPE.CRUISER]: createCruiserInner,
+    [ENEMY_TYPE.TURRET]: null, // turret has barrel instead
+    [ENEMY_TYPE.BOMBER]: createBomberInner,
+    [ENEMY_TYPE.DART]: createDartInner,
+};
+
 const COLOR_MAP = {
-    [ENEMY_TYPE.FIGHTER]: COLORS.ENEMY_FIGHTER,
-    [ENEMY_TYPE.CRUISER]: COLORS.ENEMY_CRUISER,
-    [ENEMY_TYPE.TURRET]: COLORS.ENEMY_TURRET,
-    [ENEMY_TYPE.BOMBER]: 0xffaa00,
-    [ENEMY_TYPE.DART]: 0xff44aa,
+    [ENEMY_TYPE.FIGHTER]: { body: COLORS.ENEMY_FIGHTER, dark: COLORS.ENEMY_FIGHTER_DARK, core: COLORS.ENEMY_FIGHTER_CORE },
+    [ENEMY_TYPE.CRUISER]: { body: COLORS.ENEMY_CRUISER, dark: COLORS.ENEMY_CRUISER_DARK, core: COLORS.ENEMY_CRUISER_CORE },
+    [ENEMY_TYPE.TURRET]: { body: COLORS.ENEMY_TURRET, dark: COLORS.ENEMY_TURRET_DARK, core: COLORS.ENEMY_TURRET_CORE },
+    [ENEMY_TYPE.BOMBER]: { body: COLORS.ENEMY_BOMBER, dark: COLORS.ENEMY_BOMBER_DARK, core: COLORS.ENEMY_BOMBER_CORE },
+    [ENEMY_TYPE.DART]: { body: COLORS.ENEMY_DART, dark: COLORS.ENEMY_DART_DARK, core: COLORS.ENEMY_DART_CORE },
 };
 
 const HP_MAP = {
@@ -116,11 +175,11 @@ const SCORE_MAP = {
 };
 
 const SIZE_MAP = {
-    [ENEMY_TYPE.FIGHTER]: 0.8,
-    [ENEMY_TYPE.CRUISER]: 1.4,
-    [ENEMY_TYPE.TURRET]: 1.0,
-    [ENEMY_TYPE.BOMBER]: 1.1,
-    [ENEMY_TYPE.DART]: 0.6,
+    [ENEMY_TYPE.FIGHTER]: 0.9,
+    [ENEMY_TYPE.CRUISER]: 1.5,
+    [ENEMY_TYPE.TURRET]: 1.1,
+    [ENEMY_TYPE.BOMBER]: 1.2,
+    [ENEMY_TYPE.DART]: 0.7,
 };
 
 export class Enemy {
@@ -139,52 +198,139 @@ export class Enemy {
         this.fireTimer = 1 + Math.random() * 2;
         this.fireRate = 2 + Math.random();
         this.age = 0;
+        this.hitFlashTimer = 0;
 
-        // Movement pattern
         this.pattern = null;
         this.patternData = {};
 
+        const colors = COLOR_MAP[type] || COLOR_MAP[ENEMY_TYPE.FIGHTER];
+        this.colors = colors;
+
         const geoFn = GEOMETRY_MAP[type] || createFighterGeometry;
         const geometry = geoFn();
+
+        // Outline layer
+        const outlineMat = new THREE.MeshBasicMaterial({
+            color: COLORS.OUTLINE,
+            side: THREE.DoubleSide,
+        });
+        this.outline = new THREE.Mesh(geometry, outlineMat);
+        this.outline.scale.set(this.size * 1.15, this.size * 1.15, 1);
+        this.outline.position.set(x, y, 0.9);
+        this.outline.rotation.z = Math.PI;
+        scene.add(this.outline);
+
+        // Main body
         const material = new THREE.MeshBasicMaterial({
-            color: COLOR_MAP[type] || COLORS.ENEMY_FIGHTER,
+            color: colors.body,
             side: THREE.DoubleSide,
         });
         this.mesh = new THREE.Mesh(geometry, material);
         this.mesh.scale.set(this.size, this.size, 1);
         this.mesh.position.set(x, y, 1);
-        // Enemies face downward
         this.mesh.rotation.z = Math.PI;
         scene.add(this.mesh);
+
+        // Inner detail / dark hull
+        const innerFn = INNER_GEOMETRY_MAP[type];
+        if (innerFn) {
+            const innerGeo = innerFn();
+            const innerMat = new THREE.MeshBasicMaterial({
+                color: colors.dark,
+                side: THREE.DoubleSide,
+            });
+            this.inner = new THREE.Mesh(innerGeo, innerMat);
+            this.inner.scale.set(this.size, this.size, 1);
+            this.inner.position.set(x, y, 1.05);
+            this.inner.rotation.z = Math.PI;
+            scene.add(this.inner);
+        }
+
+        // Turret gets rotating barrel
+        if (type === ENEMY_TYPE.TURRET) {
+            const barrelGeo = createTurretBarrelGeometry();
+            const barrelMat = new THREE.MeshBasicMaterial({
+                color: colors.dark,
+                side: THREE.DoubleSide,
+            });
+            this.barrel = new THREE.Mesh(barrelGeo, barrelMat);
+            this.barrel.scale.set(this.size, this.size, 1);
+            this.barrel.position.set(x, y, 1.05);
+            scene.add(this.barrel);
+
+            // Center core
+            const coreGeo = new THREE.CircleGeometry(0.15, 12);
+            const coreMat = new THREE.MeshBasicMaterial({ color: colors.core });
+            this.core = new THREE.Mesh(coreGeo, coreMat);
+            this.core.scale.set(this.size, this.size, 1);
+            this.core.position.set(x, y, 1.1);
+            scene.add(this.core);
+        } else {
+            // Glowing core for other enemies
+            const coreGeo = new THREE.CircleGeometry(0.08, 10);
+            const coreMat = new THREE.MeshBasicMaterial({
+                color: colors.core,
+                transparent: true,
+                opacity: 0.95,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+            });
+            this.core = new THREE.Mesh(coreGeo, coreMat);
+            this.core.scale.set(this.size, this.size, 1);
+            this.core.position.set(x, y, 1.1);
+            scene.add(this.core);
+        }
     }
 
     update(dt, playerX, playerY, bulletSystem) {
         this.age += dt;
 
-        // Apply movement pattern
         if (this.pattern) {
             this.pattern(this, dt, playerX, playerY);
         } else {
-            // Default: drift downward
             this.x += this.vx * dt;
             this.y += this.vy * dt;
         }
 
-        this.mesh.position.set(this.x, this.y, 1);
+        // Sync all meshes
+        if (this.mesh) this.mesh.position.set(this.x, this.y, 1);
+        if (this.outline) this.outline.position.set(this.x, this.y, 0.9);
+        if (this.inner) this.inner.position.set(this.x, this.y, 1.05);
+        if (this.core) this.core.position.set(this.x, this.y, 1.1);
 
-        // Firing logic
+        // Turret barrel aims at player
+        if (this.type === ENEMY_TYPE.TURRET && this.barrel) {
+            const dx = playerX - this.x;
+            const dy = playerY - this.y;
+            const angle = Math.atan2(dy, dx) - Math.PI / 2;
+            this.barrel.rotation.z = angle;
+            this.barrel.position.set(this.x, this.y, 1.05);
+        }
+
+        // Hit flash timer (replaces setTimeout)
+        if (this.hitFlashTimer > 0) {
+            this.hitFlashTimer -= dt;
+            const t = Math.max(0, this.hitFlashTimer / 0.08);
+            if (this.mesh && this.mesh.material) {
+                const c = new THREE.Color(this.colors.body);
+                c.lerp(new THREE.Color(0xffffff), t);
+                this.mesh.material.color.copy(c);
+            }
+        }
+
+        // Firing
         this.fireTimer -= dt;
         if (this.fireTimer <= 0 && this.active) {
             this.fireTimer = this.fireRate;
             this._fire(bulletSystem, playerX, playerY);
         }
 
-        // Off-screen check
+        // Off-screen cleanup
         if (this.y < -CONFIG.GAME_HEIGHT / 2 - 3 ||
             this.y > CONFIG.GAME_HEIGHT / 2 + 3 ||
             this.x < -CONFIG.GAME_WIDTH / 2 - 3 ||
             this.x > CONFIG.GAME_WIDTH / 2 + 3) {
-            if (this.age > 1) { // Don't remove if just spawned
+            if (this.age > 1) {
                 this.destroy();
             }
         }
@@ -205,7 +351,6 @@ export class Enemy {
                 bulletSystem.fireAtPlayer(this.x, this.y, playerX, playerY, CONFIG.ENEMY_BULLET_SPEED * 1.1);
                 break;
             case ENEMY_TYPE.BOMBER:
-                // Spread shot downward
                 for (let i = -2; i <= 2; i++) {
                     bulletSystem.fireEnemy(
                         this.x, this.y - 0.4,
@@ -215,25 +360,16 @@ export class Enemy {
                 }
                 break;
             case ENEMY_TYPE.DART:
-                // Darts don't shoot, they ram
                 break;
         }
     }
 
     takeDamage(damage) {
         this.hp -= damage;
-        // Flash white on hit
-        if (this.mesh && this.mesh.material) {
-            this.mesh.material.color.setHex(0xffffff);
-            setTimeout(() => {
-                if (this.mesh && this.mesh.material) {
-                    this.mesh.material.color.setHex(COLOR_MAP[this.type] || COLORS.ENEMY_FIGHTER);
-                }
-            }, 50);
-        }
+        this.hitFlashTimer = 0.08;
         if (this.hp <= 0) {
             this.active = false;
-            return true; // destroyed
+            return true;
         }
         return false;
     }
@@ -245,33 +381,36 @@ export class Enemy {
 
     destroy() {
         this.active = false;
-        if (this.mesh) {
-            this.scene.remove(this.mesh);
-            this.mesh.geometry.dispose();
-            this.mesh.material.dispose();
-            this.mesh = null;
-        }
+        const removeMesh = (m) => {
+            if (!m) return;
+            this.scene.remove(m);
+            if (m.geometry) m.geometry.dispose();
+            if (m.material) m.material.dispose();
+        };
+        removeMesh(this.mesh);
+        removeMesh(this.outline);
+        removeMesh(this.inner);
+        removeMesh(this.core);
+        removeMesh(this.barrel);
+        this.mesh = null;
+        this.outline = null;
+        this.inner = null;
+        this.core = null;
+        this.barrel = null;
     }
 }
 
-// Movement pattern factory functions
+// Movement patterns (unchanged)
 export const Patterns = {
-    // Straight down
     straight(speed = 5) {
-        return (enemy, dt) => {
-            enemy.y -= speed * dt;
-        };
+        return (enemy, dt) => { enemy.y -= speed * dt; };
     },
-
-    // Sine wave
     sineWave(speed = 5, amplitude = 3, frequency = 2) {
         return (enemy, dt) => {
             enemy.y -= speed * dt;
             enemy.x = enemy.patternData.startX + Math.sin(enemy.age * frequency) * amplitude;
         };
     },
-
-    // Arc from side
     arc(startSide = 'left', speed = 8) {
         return (enemy, dt) => {
             const dir = startSide === 'left' ? 1 : -1;
@@ -280,8 +419,6 @@ export const Patterns = {
             enemy.x += Math.sin(enemy.age * 3) * 2 * dt;
         };
     },
-
-    // V-formation dive
     dive(targetX = 0, targetY = -5, speed = 10) {
         return (enemy, dt) => {
             const dx = targetX - enemy.x;
@@ -291,21 +428,16 @@ export const Patterns = {
                 enemy.x += (dx / dist) * speed * dt;
                 enemy.y += (dy / dist) * speed * dt;
             } else {
-                // After reaching target, fly off screen
                 enemy.y -= speed * dt;
             }
         };
     },
-
-    // Circle pattern
     circle(centerX = 0, centerY = 5, radius = 4, speed = 2) {
         return (enemy, dt) => {
             enemy.x = centerX + Math.cos(enemy.age * speed) * radius;
             enemy.y = centerY + Math.sin(enemy.age * speed) * radius;
         };
     },
-
-    // Spiral inward
     spiral(speed = 5) {
         return (enemy, dt) => {
             const radius = Math.max(0.5, 8 - enemy.age * 1.5);
@@ -313,15 +445,11 @@ export const Patterns = {
             enemy.y = enemy.patternData.startY + Math.sin(enemy.age * speed) * radius - enemy.age * 2;
         };
     },
-
-    // Charge at player
     charge(chargeDelay = 1, chargeSpeed = 25) {
         return (enemy, dt, playerX, playerY) => {
             if (enemy.age < chargeDelay) {
-                // Hover
                 enemy.y -= 2 * dt;
             } else if (!enemy.patternData.charging) {
-                // Lock on and charge
                 enemy.patternData.charging = true;
                 const dx = playerX - enemy.x;
                 const dy = playerY - enemy.y;
@@ -334,20 +462,13 @@ export const Patterns = {
             }
         };
     },
-
-    // Turret: stationary, scrolls down slowly
     turret(scrollSpeed = 2) {
         return (enemy, dt) => {
             enemy.y -= scrollSpeed * dt;
-            // Rotate to face generally downward
-            if (enemy.mesh) {
-                enemy.mesh.rotation.z += dt * 0.5;
-            }
         };
     },
 };
 
-// EnemyManager handles spawning and wave management
 export class EnemyManager {
     constructor(scene) {
         this.scene = scene;
@@ -366,7 +487,6 @@ export class EnemyManager {
     }
 
     update(dt, playerX, playerY, bulletSystem) {
-        // Spawn waves
         if (this.waveQueue.length > 0) {
             this.waveTimer += dt;
             if (this.waveTimer >= this.waveDelay) {
@@ -379,7 +499,6 @@ export class EnemyManager {
             this.spawningComplete = true;
         }
 
-        // Update enemies
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const enemy = this.enemies[i];
             if (!enemy.active) {
@@ -409,31 +528,26 @@ export class EnemyManager {
                     ey = y || topY;
                     pattern = Patterns.straight(speed || 5);
                     break;
-
                 case 'v':
                     ex = (x || 0) + (i - (count - 1) / 2) * 1.5;
                     ey = (y || topY) + Math.abs(i - (count - 1) / 2) * 1.2;
                     pattern = Patterns.straight(speed || 5);
                     break;
-
                 case 'sine':
                     ex = (x || 0) + (i - (count - 1) / 2) * 2;
                     ey = (y || topY) + i * 0.8;
                     pattern = Patterns.sineWave(speed || 4, extras?.amplitude || 3, extras?.frequency || 2);
                     break;
-
                 case 'arc_left':
                     ex = -halfW - 1;
                     ey = (y || topY - 5) - i * 1.5;
                     pattern = Patterns.arc('left', speed || 8);
                     break;
-
                 case 'arc_right':
                     ex = halfW + 1;
                     ey = (y || topY - 5) - i * 1.5;
                     pattern = Patterns.arc('right', speed || 8);
                     break;
-
                 case 'circle':
                     ex = (x || 0);
                     ey = (y || topY);
@@ -444,7 +558,6 @@ export class EnemyManager {
                         (extras?.speed || 2) + i * 0.3,
                     );
                     break;
-
                 case 'dive':
                     ex = (x || 0) + (i - (count - 1) / 2) * 2;
                     ey = y || topY;
@@ -454,26 +567,22 @@ export class EnemyManager {
                         speed || 10,
                     );
                     break;
-
                 case 'spiral':
                     ex = (x || 0);
                     ey = (y || topY);
                     pattern = Patterns.spiral(speed || 3 + i * 0.5);
                     break;
-
                 case 'charge':
                     ex = (x || 0) + (i - (count - 1) / 2) * 3;
                     ey = y || topY;
                     pattern = Patterns.charge(0.5 + i * 0.3, speed || 25);
                     break;
-
                 case 'turret':
                     ex = (x || 0) + (i - (count - 1) / 2) * 4;
                     ey = y || topY;
                     pattern = Patterns.turret(speed || 2);
                     break;
-
-                default: // random
+                default:
                     ex = (Math.random() - 0.5) * (CONFIG.GAME_WIDTH - 4);
                     ey = topY + i * 1.5;
                     pattern = Patterns.straight(speed || 5);
