@@ -458,7 +458,7 @@ export class Boss {
     takeDamage(damage) {
         this.hp -= damage;
         // Flash
-        if (this.mesh.material) {
+        if (this.mesh && this.mesh.material) {
             this.mesh.material.color.setHex(0xffffff);
             setTimeout(() => {
                 if (this.mesh && this.mesh.material) {

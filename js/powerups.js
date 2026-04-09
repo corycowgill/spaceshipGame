@@ -54,6 +54,7 @@ class PowerUp {
     }
 
     update(dt) {
+        if (!this.active || !this.mesh) return;
         this.age += dt;
         this.y -= CONFIG.POWERUP_FALL_SPEED * dt;
         this.x += Math.sin(this.age * 3) * 0.5 * dt;
@@ -124,6 +125,10 @@ export class PowerUpManager {
     update(dt) {
         for (let i = this.powerups.length - 1; i >= 0; i--) {
             const p = this.powerups[i];
+            if (!p.active) {
+                this.powerups.splice(i, 1);
+                continue;
+            }
             p.update(dt);
             if (!p.active) {
                 this.powerups.splice(i, 1);

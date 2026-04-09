@@ -223,10 +223,10 @@ export class Enemy {
     takeDamage(damage) {
         this.hp -= damage;
         // Flash white on hit
-        if (this.mesh.material) {
+        if (this.mesh && this.mesh.material) {
             this.mesh.material.color.setHex(0xffffff);
             setTimeout(() => {
-                if (this.mesh.material) {
+                if (this.mesh && this.mesh.material) {
                     this.mesh.material.color.setHex(COLOR_MAP[this.type] || COLORS.ENEMY_FIGHTER);
                 }
             }, 50);
