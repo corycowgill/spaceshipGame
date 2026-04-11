@@ -3,16 +3,19 @@ import { ENEMY_TYPE } from './enemies.js';
 // Wave definition: { type, count, formation, delay (before next wave), x, y, speed, extras }
 
 const STAGE_1_WAVES = [
-    // Asteroid Belt - Introduction
-    { type: ENEMY_TYPE.FIGHTER, count: 3, formation: 'line', delay: 3, speed: 4 },
+    // Asteroid Belt - Gentle introduction (fighters only first 3 waves)
+    { type: ENEMY_TYPE.FIGHTER, count: 3, formation: 'line', delay: 3.5, speed: 3.5 },
+    { type: ENEMY_TYPE.FIGHTER, count: 3, formation: 'v', delay: 3.5, speed: 4 },
+    { type: ENEMY_TYPE.FIGHTER, count: 4, formation: 'sine', delay: 4, speed: 4, extras: { amplitude: 2.5 } },
+    // Now introduce darts
+    { type: ENEMY_TYPE.DART, count: 3, formation: 'line', delay: 3, speed: 7 },
     { type: ENEMY_TYPE.FIGHTER, count: 5, formation: 'v', delay: 3, speed: 5 },
-    { type: ENEMY_TYPE.DART, count: 4, formation: 'line', delay: 2, speed: 8 },
-    { type: ENEMY_TYPE.FIGHTER, count: 4, formation: 'sine', delay: 3, speed: 4, extras: { amplitude: 3 } },
-    { type: ENEMY_TYPE.TURRET, count: 2, formation: 'turret', delay: 4, speed: 2 },
-    { type: ENEMY_TYPE.FIGHTER, count: 6, formation: 'v', delay: 3, speed: 5 },
-    { type: ENEMY_TYPE.DART, count: 6, formation: 'dive', delay: 3, speed: 12 },
-    { type: ENEMY_TYPE.FIGHTER, count: 4, formation: 'arc_left', delay: 2, speed: 7 },
-    { type: ENEMY_TYPE.FIGHTER, count: 4, formation: 'arc_right', delay: 3, speed: 7 },
+    // Breather gap then introduce turrets
+    { type: ENEMY_TYPE.TURRET, count: 2, formation: 'turret', delay: 4.5, speed: 2 },
+    { type: ENEMY_TYPE.FIGHTER, count: 4, formation: 'arc_left', delay: 3, speed: 6 },
+    { type: ENEMY_TYPE.FIGHTER, count: 4, formation: 'arc_right', delay: 3, speed: 6 },
+    // Breather then mini-challenge
+    { type: ENEMY_TYPE.DART, count: 5, formation: 'dive', delay: 4, speed: 10 },
     { type: ENEMY_TYPE.CRUISER, count: 1, formation: 'line', delay: 4, x: 0, speed: 3 },
     { type: ENEMY_TYPE.FIGHTER, count: 5, formation: 'sine', delay: 0, speed: 5, extras: { amplitude: 4 } },
 ];

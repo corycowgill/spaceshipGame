@@ -157,11 +157,18 @@ export class Boss {
         this.size = config.size;
         this.active = true;
         this.phase = 0;
-        this.maxPhases = config.phases;
+        this.maxPhases = Math.max(3, config.phases); // minimum 3 phases
         this.age = 0;
         this.fireTimer = 0;
         this.patternTimer = 0;
         this.attackPattern = 0;
+
+        // Phase transition state
+        this.phaseTransitionTimer = 0; // >0 = in transition (attacks paused, flash)
+        this.phaseTransitionDuration = 1.2;
+
+        // Timer queue to replace setTimeout for staggered bullet spawns
+        this._timerQueue = []; // [{delay, fn}]
 
         // Position - enter from top
         this.x = 0;
@@ -297,6 +304,15 @@ export class Boss {
             return;
         }
 
+        // Timer queue (replaces setTimeout for staggered bullets)
+        for (let i = this._timerQueue.length - 1; i >= 0; i--) {
+            this._timerQueue[i].delay -= dt;
+            if (this._timerQueue[i].delay <= 0) {
+                this._timerQueue[i].fn();
+                this._timerQueue.splice(i, 1);
+            }
+        }
+
         // Phase transitions
         const hpRatio = this.hp / this.maxHp;
         const newPhase = Math.floor((1 - hpRatio) * this.maxPhases);
@@ -304,6 +320,24 @@ export class Boss {
             this.phase = newPhase;
             this.attackPattern = 0;
             this.patternTimer = 0;
+            // Phase transition feedback
+            this.phaseTransitionTimer = this.phaseTransitionDuration;
+            this._timerQueue = []; // cancel pending bullets
+            // Clear enemy bullets (give player breathing room) — done via callback
+            if (this._onPhaseChange) this._onPhaseChange(this.phase);
+        }
+
+        // Phase transition pause: flash and don't attack
+        if (this.phaseTransitionTimer > 0) {
+            this.phaseTransitionTimer -= dt;
+            this._updateMovement(dt, playerX);
+            // White flash during transition
+            if (this.mesh && this.mesh.material) {
+                const flashT = Math.sin(this.phaseTransitionTimer * 12);
+                this.mesh.material.color.setHex(flashT > 0 ? 0xffffff : this.config.color);
+            }
+            this._syncPosition();
+            return; // skip attack logic during phase transition
         }
 
         // Movement
@@ -484,9 +518,9 @@ export class Boss {
         } else if (attackType === 1) {
             // Tracking burst
             for (let i = 0; i < 3; i++) {
-                setTimeout(() => {
-                    bs.fireAtPlayer(this.x, this.y - 1, px, py, spd * 1.3);
-                }, i * 100);
+                this._timerQueue.push({ delay: i * 0.1, fn: () => {
+                    if (this.active) bs.fireAtPlayer(this.x, this.y - 1, px, py, spd * 1.3);
+                }});
             }
             this.fireTimer = 0.6;
         } else if (attackType === 2) {
@@ -551,12 +585,13 @@ export class Boss {
                 const gap = Math.floor(Math.random() * 10);
                 for (let i = 0; i < 12; i++) {
                     if (Math.abs(i - gap) <= 1) continue;
-                    const delay = wave * 200;
-                    setTimeout(() => {
-                        bs.fireEnemy(
-                            this.x + (i - 5.5) * 1.0, this.y - 1,
-                            0, -spd * (0.5 + wave * 0.2));
-                    }, delay);
+                    const waveSpd = spd * (0.5 + wave * 0.2);
+                    const col = i;
+                    this._timerQueue.push({ delay: wave * 0.2, fn: () => {
+                        if (this.active) bs.fireEnemy(
+                            this.x + (col - 5.5) * 1.0, this.y - 1,
+                            0, -waveSpd);
+                    }});
                 }
             }
             this.fireTimer = 0.8;

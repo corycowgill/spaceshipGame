@@ -56,6 +56,18 @@ class Game {
         this.currentStage = 0;
         this.boss = null;
 
+        // Bomb system
+        this.bombs = CONFIG.BOMB_START;
+        this.bombCooldown = 0;
+
+        // Combo/multiplier system
+        this.combo = 0;
+        this.comboMultiplier = 1;
+        this.comboTimer = 0; // time since last kill
+
+        // Graze tracking
+        this.grazeTimer = 0; // cooldown between graze sounds
+
         // Timing
         this.lastTime = 0;
         this.frameDt = 1 / 60;
@@ -193,6 +205,13 @@ class Game {
             this._setState(GAME_STATE.BOSS_FIGHT);
             this.boss = new Boss(this.scene, this.currentStage);
             this.boss.setParticleSystem(this.particles);
+            // Phase transition callback — clear bullets and flash
+            this.boss._onPhaseChange = (phase) => {
+                this.bullets.clearEnemyBullets();
+                this.hud.flash();
+                this.hud.shake(6, 0.4);
+                this.audio.bossWarning();
+            };
             this.audio.startMusic(this.currentStage);
         }
     }
@@ -208,7 +227,7 @@ class Game {
         this.player.update(dt, this.input);
         this._emitThruster();
 
-        // Player shooting
+        // Auto-fire
         if (this.input.fire && this.player.canFire() && this.player.alive) {
             this.player.fire();
             this.bullets.firePlayer(this.player.x, this.player.y, this.player.weaponType, this.player.weaponLevel);
@@ -216,6 +235,9 @@ class Game {
                 this.audio.playerShoot();
             }
         }
+
+        // Bomb
+        this._handleBomb(dt);
 
         // Update boss
         if (this.boss && this.boss.active) {
@@ -233,6 +255,8 @@ class Game {
         // Collision detection
         this._checkBossCollisions();
         this._checkPlayerCollisions();
+        this._checkGraze(dt);
+        this._updateCombo(dt);
 
         // Check boss death
         if (this.boss && !this.boss.active) {
@@ -253,6 +277,7 @@ class Game {
             } else {
                 this._setState(GAME_STATE.STAGE_CLEAR);
                 this.score += (this.currentStage + 1) * 1000;
+                this.bombs = Math.min(this.bombs + 1, CONFIG.BOMB_MAX);
                 this.audio.stopMusic();
                 this.audio.stageComplete();
             }
@@ -328,7 +353,7 @@ class Game {
         this.player.update(dt, this.input);
         this._emitThruster();
 
-        // Player shooting
+        // Auto-fire: shoot continuously while fire is held
         if (this.input.fire && this.player.canFire() && this.player.alive) {
             this.player.fire();
             this.bullets.firePlayer(this.player.x, this.player.y, this.player.weaponType, this.player.weaponLevel);
@@ -336,6 +361,9 @@ class Game {
                 this.audio.playerShoot();
             }
         }
+
+        // Bomb
+        this._handleBomb(dt);
 
         // Update enemies
         this.enemyManager.update(dt, this.player.x, this.player.y, this.bullets);
@@ -351,7 +379,11 @@ class Game {
         // Collision detection
         this._checkEnemyCollisions();
         this._checkPlayerCollisions();
+        this._checkGraze(dt);
         this._checkPowerUpCollisions();
+
+        // Combo decay
+        this._updateCombo(dt);
 
         // Player respawn
         this._handlePlayerRespawn(dt);
@@ -533,8 +565,100 @@ class Game {
 
     // ---- Events ----
 
+    // ---- Bomb System ----
+
+    _handleBomb(dt) {
+        if (this.bombCooldown > 0) this.bombCooldown -= dt;
+
+        if (this.input.bomb && this.bombs > 0 && this.bombCooldown <= 0 && this.player.alive) {
+            this.bombs--;
+            this.bombCooldown = CONFIG.BOMB_COOLDOWN;
+
+            // Clear all enemy bullets
+            this.bullets.clearEnemyBullets();
+
+            // Damage all enemies on screen
+            const enemies = this.enemyManager.getActiveEnemies();
+            for (const enemy of enemies) {
+                const destroyed = enemy.takeDamage(CONFIG.BOMB_DAMAGE);
+                if (destroyed) this._onEnemyDestroyed(enemy);
+            }
+
+            // Damage boss too
+            if (this.boss && this.boss.active) {
+                this.boss.takeDamage(CONFIG.BOMB_DAMAGE);
+            }
+
+            // Grant brief invincibility
+            this.player.invincibleTimer = Math.max(
+                this.player.invincibleTimer, CONFIG.BOMB_INVINCIBILITY);
+
+            // Screen-wide explosion effect
+            this.particles.bigExplosion(this.player.x, this.player.y);
+            this.audio.bigExplosion();
+            this.hud.flash();
+            this.hud.shake(12, 0.6);
+        }
+    }
+
+    // ---- Combo System ----
+
+    _updateCombo(dt) {
+        if (this.comboTimer > 0) {
+            this.comboTimer -= dt;
+        }
+        if (this.comboTimer <= 0 && this.comboMultiplier > 1) {
+            this.comboMultiplier = 1;
+            this.combo = 0;
+        }
+    }
+
+    _addComboKill() {
+        this.combo++;
+        this.comboTimer = CONFIG.COMBO_DECAY;
+        this.comboMultiplier = Math.min(CONFIG.COMBO_MAX,
+            1 + Math.floor(this.combo / 3)); // every 3 kills = +1x
+    }
+
+    // ---- Graze Detection ----
+
+    _checkGraze(dt) {
+        if (!this.player.alive || this.player.invincibleTimer > 0) return;
+        if (this.grazeTimer > 0) { this.grazeTimer -= dt; return; }
+
+        const pb = this.player.getBounds();
+        const graze = CONFIG.GRAZE_RADIUS;
+        // Expand player bounds by graze radius for near-miss check
+        const gz = {
+            x: pb.x - graze,
+            y: pb.y - graze,
+            w: pb.w + graze * 2,
+            h: pb.h + graze * 2,
+        };
+
+        const enemyBullets = this.bullets.getActiveEnemyBullets();
+        for (const bullet of enemyBullets) {
+            const bb = {
+                x: bullet.x - 0.15,
+                y: bullet.y - 0.15,
+                w: 0.3,
+                h: 0.3,
+            };
+            // In graze zone but NOT hitting player
+            if (this._aabb(gz, bb) && !this._aabb(pb, bb)) {
+                this.score += CONFIG.SCORE_GRAZE * this.comboMultiplier;
+                this.grazeTimer = 0.08; // prevent multi-graze per frame flood
+                this.particles.sparkle(bullet.x, bullet.y, 0xffffff);
+                return;
+            }
+        }
+    }
+
+    // ---- Events ----
+
     _onEnemyDestroyed(enemy) {
-        this.score += enemy.score;
+        this._addComboKill();
+        this.score += enemy.score * this.comboMultiplier;
         const scale = enemy.size > 1.2 ? 1.4 : 1.0;
         this.particles.explode(enemy.x, enemy.y, CONFIG.EXPLOSION_PARTICLE_COUNT, scale);
         this.audio.explosion();
@@ -542,7 +666,7 @@ class Game {
             this.hud.shake(3, 0.15);
         }
 
-        // Power-up drop
+        // Power-up drop (guaranteed for last enemy in wave if nothing dropped yet)
         if (Math.random() < CONFIG.POWERUP_DROP_CHANCE) {
             this.powerups.spawn(enemy.x, enemy.y);
         }
@@ -554,6 +678,10 @@ class Game {
             this.audio.playerDeath();
             this.hud.flash();
             this.hud.shake(8, 0.5);
+            // Reset combo on death
+            this.combo = 0;
+            this.comboMultiplier = 1;
+            this.comboTimer = 0;
         }
     }
 
@@ -586,6 +714,10 @@ class Game {
         this._cleanup();
         this.score = 0;
         this.lives = CONFIG.MAX_LIVES;
+        this.bombs = CONFIG.BOMB_START;
+        this.combo = 0;
+        this.comboMultiplier = 1;
+        this.comboTimer = 0;
         this.currentStage = 0;
         this.player.reset();
         this.background.setStageTheme(0);

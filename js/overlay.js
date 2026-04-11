@@ -131,16 +131,20 @@ export class HUD {
         ctx.fillStyle = '#888888';
         ctx.font = '14px "Courier New", monospace';
         if (isGamepad) {
-            ctx.fillText('LEFT STICK / D-PAD - MOVE', w / 2, h * 0.70);
-            ctx.fillText('A / X / RB / RT - FIRE', w / 2, h * 0.74);
-            ctx.fillText('MENU - PAUSE', w / 2, h * 0.78);
+            ctx.fillText('LEFT STICK / D-PAD - MOVE', w / 2, h * 0.68);
+            ctx.fillText('A / X / RB / RT - FIRE', w / 2, h * 0.72);
+            ctx.fillText('B / Y / LB - BOMB', w / 2, h * 0.76);
+            ctx.fillText('LT - FOCUS (SLOW)', w / 2, h * 0.80);
+            ctx.fillText('MENU - PAUSE', w / 2, h * 0.84);
         } else if (isTouch) {
             ctx.fillText('LEFT HALF - VIRTUAL JOYSTICK', w / 2, h * 0.70);
             ctx.fillText('RIGHT HALF - FIRE', w / 2, h * 0.74);
         } else {
-            ctx.fillText('ARROW KEYS / WASD - MOVE', w / 2, h * 0.70);
-            ctx.fillText('SPACE / Z - FIRE', w / 2, h * 0.74);
-            ctx.fillText('P / ESC - PAUSE', w / 2, h * 0.78);
+            ctx.fillText('ARROW KEYS / WASD - MOVE', w / 2, h * 0.68);
+            ctx.fillText('SPACE / Z - FIRE (AUTO)', w / 2, h * 0.72);
+            ctx.fillText('X / C - BOMB', w / 2, h * 0.76);
+            ctx.fillText('SHIFT - FOCUS (SLOW)', w / 2, h * 0.80);
+            ctx.fillText('P / ESC - PAUSE', w / 2, h * 0.84);
         }
 
         // High score
@@ -162,18 +166,31 @@ export class HUD {
         ctx.textAlign = 'left';
         ctx.fillText(`SCORE: ${game.score}`, 12, 28);
 
+        // Combo multiplier (next to score, pulsing when active)
+        if (game.comboMultiplier > 1) {
+            const pulse = 1 + Math.sin(Date.now() * 0.008) * 0.15;
+            ctx.fillStyle = game.comboMultiplier >= 6 ? '#ff4400'
+                : game.comboMultiplier >= 4 ? '#ffaa00'
+                : '#ffdd00';
+            ctx.font = `bold ${Math.floor(16 * pulse)}px "Courier New", monospace`;
+            ctx.fillText(`x${game.comboMultiplier}`, 12 + ctx.measureText(`SCORE: ${game.score}`).width + 10, 28);
+        }
+
         // Stage indicator - top center
         ctx.textAlign = 'center';
         ctx.fillStyle = '#888888';
         ctx.font = '14px "Courier New", monospace';
         ctx.fillText(`STAGE ${game.currentStage + 1}`, w / 2, 28);
 
-        // Lives - top right
+        // Lives + bombs - top right
         ctx.textAlign = 'right';
         ctx.fillStyle = '#00ddff';
         ctx.font = '14px "Courier New", monospace';
-        const livesText = '❤'.repeat(Math.max(0, game.lives));
+        const livesText = '\u2764'.repeat(Math.max(0, game.lives));
+        const bombsText = '\uD83D\uDCA3'.repeat(Math.max(0, game.bombs));
         ctx.fillText(livesText, w - 12, 26);
+        ctx.fillStyle = '#ffaa00';
+        ctx.fillText(bombsText, w - 12, 44);
 
         // Weapon indicator - bottom left
         ctx.textAlign = 'left';
@@ -182,6 +199,13 @@ export class HUD {
         ctx.fillStyle = '#00ff88';
         ctx.font = '14px "Courier New", monospace';
         ctx.fillText(`WPN: ${weaponName} LV${weaponLevel}`, 12, h - 14);
+
+        // Focus mode indicator
+        if (game.input && game.input.focus && game.player?.alive) {
+            ctx.fillStyle = 'rgba(255, 0, 255, 0.7)';
+            ctx.font = '12px "Courier New", monospace';
+            ctx.fillText('FOCUS', 12, h - 30);
+        }
 
         // Boss health bar
         if (game.state === GAME_STATE.BOSS_FIGHT && game.boss) {
@@ -212,6 +236,20 @@ export class HUD {
             ctx.fillStyle = '#ff44aa';
             ctx.font = 'bold 12px "Courier New", monospace';
             ctx.fillText(game.boss.name || 'BOSS', w / 2, barY - 4);
+        }
+
+        // Boss phase transition overlay
+        if (game.state === GAME_STATE.BOSS_FIGHT && game.boss && game.boss.phaseTransitionTimer > 0) {
+            const alpha = Math.min(1, game.boss.phaseTransitionTimer * 2);
+            ctx.globalAlpha = alpha;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#ff4400';
+            ctx.font = 'bold 24px "Courier New", monospace';
+            ctx.shadowColor = '#ff4400';
+            ctx.shadowBlur = 15;
+            ctx.fillText(`PHASE ${game.boss.phase + 1}`, w / 2, h / 2);
+            ctx.shadowBlur = 0;
+            ctx.globalAlpha = 1;
         }
 
         // Boss warning overlay

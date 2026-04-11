@@ -283,6 +283,7 @@ export class Enemy {
     }
 
     update(dt, playerX, playerY, bulletSystem) {
+        this._bulletSystem = bulletSystem; // store for kamikaze death burst
         this.age += dt;
 
         if (this.pattern) {
@@ -369,6 +370,15 @@ export class Enemy {
         this.hitFlashTimer = 0.08;
         if (this.hp <= 0) {
             this.active = false;
+            // Dart kamikaze: burst of bullets on death
+            if (this.type === ENEMY_TYPE.DART && this._bulletSystem) {
+                const spd = CONFIG.ENEMY_BULLET_SPEED * 0.6;
+                for (let i = 0; i < 6; i++) {
+                    const a = (i / 6) * Math.PI * 2;
+                    this._bulletSystem.fireEnemy(this.x, this.y,
+                        Math.cos(a) * spd, Math.sin(a) * spd);
+                }
+            }
             return true;
         }
         return false;

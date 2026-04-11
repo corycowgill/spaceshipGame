@@ -9,17 +9,26 @@ export const CONFIG = {
     CANVAS_HEIGHT: 720,
 
     // Player
-    PLAYER_SPEED: 20,
+    PLAYER_SPEED: 22,
+    PLAYER_FOCUS_SPEED: 9, // focused/slow mode
+    PLAYER_ACCEL: 35, // acceleration rate (units/sec² toward target velocity)
     PLAYER_SIZE: 1.0,
     MAX_LIVES: 3,
     INVINCIBILITY_TIME: 2.5,
     RESPAWN_TIME: 1.5,
 
+    // Bombs
+    BOMB_START: 2,
+    BOMB_MAX: 3,
+    BOMB_DAMAGE: 25,
+    BOMB_INVINCIBILITY: 1.2,
+    BOMB_COOLDOWN: 0.5, // seconds between bomb uses
+
     // Bullets
     PLAYER_BULLET_SPEED: 40,
     ENEMY_BULLET_SPEED: 14,
-    PLAYER_FIRE_RATE: 0.12, // seconds between shots
-    LASER_DPS: 120, // damage per second
+    PLAYER_FIRE_RATE: 0.10, // slightly faster for auto-fire feel
+    LASER_DPS: 140, // buffed laser
 
     // Enemies
     ENEMY_SPAWN_MARGIN: 2,
@@ -27,7 +36,7 @@ export const CONFIG = {
     // Power-ups
     POWERUP_FALL_SPEED: 6,
     POWERUP_SIZE: 0.8,
-    POWERUP_DROP_CHANCE: 0.25,
+    POWERUP_DROP_CHANCE: 0.30, // raised from 0.25
 
     // Particles
     MAX_PARTICLES: 500,
@@ -40,6 +49,15 @@ export const CONFIG = {
     SCORE_TURRET: 150,
     SCORE_BOSS: 5000,
     SCORE_POWERUP: 50,
+    SCORE_GRAZE: 10,
+
+    // Combo
+    COMBO_WINDOW: 1.8, // seconds to chain kills
+    COMBO_DECAY: 2.0, // seconds of no kills before multiplier resets
+    COMBO_MAX: 8,
+
+    // Graze
+    GRAZE_RADIUS: 0.5, // distance from player hitbox edge for graze detection
 
     // Stage
     STAGE_TRANSITION_TIME: 4,

@@ -143,6 +143,8 @@ export class Player {
     reset() {
         this.x = 0;
         this.y = -CONFIG.GAME_HEIGHT / 2 + 4;
+        this.vx = 0; // momentum velocity
+        this.vy = 0;
         this.weaponType = WEAPON_TYPES.SINGLE;
         this.weaponLevel = 1;
         this.fireTimer = 0;
@@ -163,9 +165,9 @@ export class Player {
             return;
         }
 
+        // Determine target direction
         let dx = 0, dy = 0;
         if (input.touchActive || input.isGamepadActive) {
-            // Analog input from touch joystick or gamepad stick
             dx = input.axisX;
             dy = input.axisY;
         } else {
@@ -180,13 +182,28 @@ export class Player {
             }
         }
 
-        this.x += dx * CONFIG.PLAYER_SPEED * dt;
-        this.y += dy * CONFIG.PLAYER_SPEED * dt;
+        // Focused/slow mode (hold Shift or LT)
+        const focused = input.focus;
+        const speed = focused ? CONFIG.PLAYER_FOCUS_SPEED : CONFIG.PLAYER_SPEED;
+
+        // Target velocity
+        const targetVx = dx * speed;
+        const targetVy = dy * speed;
+
+        // Smooth acceleration toward target velocity (momentum)
+        const accel = CONFIG.PLAYER_ACCEL * dt;
+        this.vx += (targetVx - this.vx) * Math.min(1, accel);
+        this.vy += (targetVy - this.vy) * Math.min(1, accel);
+
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
 
         const halfW = CONFIG.GAME_WIDTH / 2 - 1;
         const halfH = CONFIG.GAME_HEIGHT / 2 - 1;
-        this.x = Math.max(-halfW, Math.min(halfW, this.x));
-        this.y = Math.max(-halfH, Math.min(halfH, this.y));
+        if (this.x < -halfW) { this.x = -halfW; this.vx = 0; }
+        if (this.x > halfW) { this.x = halfW; this.vx = 0; }
+        if (this.y < -halfH) { this.y = -halfH; this.vy = 0; }
+        if (this.y > halfH) { this.y = halfH; this.vy = 0; }
 
         if (this.fireTimer > 0) this.fireTimer -= dt;
 
@@ -261,11 +278,18 @@ export class Player {
         this.alive = true;
         this.x = 0;
         this.y = -CONFIG.GAME_HEIGHT / 2 + 4;
+        this.vx = 0;
+        this.vy = 0;
         this.invincibleTimer = CONFIG.INVINCIBILITY_TIME;
         this.setVisible(true);
         this._syncPosition();
-        this.weaponType = WEAPON_TYPES.SINGLE;
-        this.weaponLevel = 1;
+        // Gentler death penalty: drop 1 weapon level instead of full reset
+        if (this.weaponLevel > 1) {
+            this.weaponLevel--;
+        } else {
+            // Already level 1 — downgrade to SINGLE
+            this.weaponType = WEAPON_TYPES.SINGLE;
+        }
     }
 
     upgradeWeapon(type) {

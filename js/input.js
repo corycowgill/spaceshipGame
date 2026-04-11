@@ -270,8 +270,20 @@ export class Input {
         return this.touchFire || this.isDown('Space') || this.isDown('KeyZ');
     }
 
+    get bomb() {
+        // B, Y, LB on gamepad; X or C on keyboard
+        if (this._gpButtonJustPressed(1) || this._gpButtonJustPressed(3) ||
+            this._gpButtonJustPressed(4)) return true;
+        return this.wasPressed('KeyX') || this.wasPressed('KeyC');
+    }
+
+    get focus() {
+        // LT on gamepad; Shift on keyboard
+        if (this._gpButtonDown(6)) return true;
+        return this.isDown('ShiftLeft') || this.isDown('ShiftRight');
+    }
+
     get start() {
-        // A button only — Start/Menu is reserved for pause
         if (this._gpButtonJustPressed(0)) return true;
         if (this._startTouchTriggered) {
             this._startTouchTriggered = false;
@@ -281,7 +293,6 @@ export class Input {
     }
 
     get pause() {
-        // Start/Menu (9) or Back/View (8)
         if (this._gpButtonJustPressed(9) || this._gpButtonJustPressed(8)) return true;
         return this.wasPressed('KeyP') || this.wasPressed('Escape');
     }

@@ -196,14 +196,15 @@ export class BulletSystem {
                 break;
 
             case WEAPON_TYPES.SPREAD: {
+                // Fixed: damage matches SINGLE per-volley (no penalty)
                 const count = 3 + weaponLevel * 2;
-                const arc = (0.3 + weaponLevel * 0.15);
+                const arc = (0.35 + weaponLevel * 0.15);
                 for (let i = 0; i < count; i++) {
                     const angle = Math.PI / 2 + (i - (count - 1) / 2) * arc / count;
                     this._spawnPlayerBullet(x, y + 0.5,
-                        Math.cos(angle) * speed * 0.8,
-                        Math.sin(angle) * speed * 0.8,
-                        Math.max(1, dmg - 1));
+                        Math.cos(angle) * speed * 0.85,
+                        Math.sin(angle) * speed * 0.85,
+                        dmg);
                 }
                 break;
             }
@@ -223,7 +224,9 @@ export class BulletSystem {
                 break;
 
             case WEAPON_TYPES.REAR:
-                this._spawnPlayerBullet(x, y + 0.5, 0, speed, dmg);
+                // "Power shot" identity: 2 strong forward shots + 1 rear
+                this._spawnPlayerBullet(x - 0.2, y + 0.5, 0, speed, dmg + 1);
+                this._spawnPlayerBullet(x + 0.2, y + 0.5, 0, speed, dmg + 1);
                 this._spawnPlayerBullet(x, y - 0.5, 0, -speed * 0.6, dmg);
                 if (weaponLevel >= 2) {
                     this._spawnPlayerBullet(x - 0.3, y + 0.3, 0, speed, dmg);
