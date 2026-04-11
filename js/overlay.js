@@ -117,16 +117,24 @@ export class HUD {
 
         // Blinking start text
         const isTouch = game.input && game.input.isTouchDevice;
+        const isGamepad = game.input && game.input.isGamepadActive;
         if (Math.floor(game.stateTimer * 2) % 2 === 0) {
             ctx.fillStyle = '#ffffff';
             ctx.font = '18px "Courier New", monospace';
-            ctx.fillText(isTouch ? 'TAP TO START' : 'PRESS ENTER OR SPACE TO START', w / 2, h * 0.55);
+            const startMsg = isGamepad ? 'PRESS START OR A'
+                : isTouch ? 'TAP TO START'
+                : 'PRESS ENTER OR SPACE TO START';
+            ctx.fillText(startMsg, w / 2, h * 0.55);
         }
 
         // Controls
         ctx.fillStyle = '#888888';
         ctx.font = '14px "Courier New", monospace';
-        if (isTouch) {
+        if (isGamepad) {
+            ctx.fillText('LEFT STICK / D-PAD - MOVE', w / 2, h * 0.70);
+            ctx.fillText('A / X / RB / RT - FIRE', w / 2, h * 0.74);
+            ctx.fillText('MENU - PAUSE', w / 2, h * 0.78);
+        } else if (isTouch) {
             ctx.fillText('LEFT HALF - VIRTUAL JOYSTICK', w / 2, h * 0.70);
             ctx.fillText('RIGHT HALF - FIRE', w / 2, h * 0.74);
         } else {

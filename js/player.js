@@ -164,7 +164,8 @@ export class Player {
         }
 
         let dx = 0, dy = 0;
-        if (input.touchActive) {
+        if (input.touchActive || input.isGamepadActive) {
+            // Analog input from touch joystick or gamepad stick
             dx = input.axisX;
             dy = input.axisY;
         } else {

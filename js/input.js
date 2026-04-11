@@ -1,4 +1,4 @@
-// Keyboard + touch input manager with virtual joystick for iOS/mobile
+// Keyboard + touch + gamepad input manager
 export class Input {
     constructor() {
         this.keys = {};
@@ -16,8 +16,15 @@ export class Input {
         this._fireTouchId = null;
         this._startTouchTriggered = false;
 
+        // Gamepad state
+        this._gpAxisX = 0;
+        this._gpAxisY = 0;
+        this._gpButtons = {};
+        this._gpPrevButtons = {};
+        this._gpConnected = false;
+        this._gpIndex = null;
+
         this._onKeyDown = (e) => {
-            // Allow devtools shortcuts
             if (e.code === 'F12' || (e.ctrlKey && e.shiftKey)) return;
             e.preventDefault();
             this.keys[e.code] = true;
@@ -41,6 +48,25 @@ export class Input {
         if (this.isTouchDevice) {
             this._setupTouch();
         }
+
+        // Gamepad connection listeners
+        this._onGamepadConnected = (e) => {
+            console.log('Gamepad connected:', e.gamepad.id);
+            this._gpIndex = e.gamepad.index;
+            this._gpConnected = true;
+        };
+        this._onGamepadDisconnected = (e) => {
+            console.log('Gamepad disconnected:', e.gamepad.id);
+            if (this._gpIndex === e.gamepad.index) {
+                this._gpConnected = false;
+                this._gpIndex = null;
+                this._gpAxisX = 0;
+                this._gpAxisY = 0;
+                this._gpButtons = {};
+            }
+        };
+        window.addEventListener('gamepadconnected', this._onGamepadConnected);
+        window.addEventListener('gamepaddisconnected', this._onGamepadDisconnected);
     }
 
     _setupTouch() {
@@ -50,7 +76,6 @@ export class Input {
         window.addEventListener('touchend', (e) => this._onTouchEnd(e), opts);
         window.addEventListener('touchcancel', (e) => this._onTouchEnd(e), opts);
 
-        // Prevent iOS Safari rubber-band scroll and zoom
         document.addEventListener('gesturestart', (e) => e.preventDefault());
         document.addEventListener('gesturechange', (e) => e.preventDefault());
         document.body.style.touchAction = 'none';
@@ -63,7 +88,6 @@ export class Input {
         e.preventDefault();
         const halfW = window.innerWidth / 2;
         for (const touch of e.changedTouches) {
-            // Left half = joystick, right half = fire
             if (touch.clientX < halfW) {
                 if (this._joystickTouchId === null) {
                     this._joystickTouchId = touch.identifier;
@@ -99,7 +123,7 @@ export class Input {
                     const len = Math.min(maxRadius, Math.sqrt(dx * dx + dy * dy));
                     const angle = Math.atan2(dy, dx);
                     this.touchDx = Math.cos(angle) * (len / maxRadius);
-                    this.touchDy = -Math.sin(angle) * (len / maxRadius); // invert Y for game coords
+                    this.touchDy = -Math.sin(angle) * (len / maxRadius);
                 }
             }
         }
@@ -121,11 +145,72 @@ export class Input {
         }
     }
 
+    // ---- Gamepad polling (called every frame) ----
+    _pollGamepad() {
+        // Gamepad API requires polling — no events for buttons/axes
+        const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+        let gp = null;
+
+        if (this._gpIndex !== null && gamepads[this._gpIndex]) {
+            gp = gamepads[this._gpIndex];
+        } else {
+            // Find any connected gamepad
+            for (const pad of gamepads) {
+                if (pad && pad.connected) {
+                    gp = pad;
+                    this._gpIndex = pad.index;
+                    this._gpConnected = true;
+                    break;
+                }
+            }
+        }
+
+        if (!gp) {
+            this._gpConnected = false;
+            this._gpAxisX = 0;
+            this._gpAxisY = 0;
+            return;
+        }
+
+        // Standard gamepad mapping (Xbox layout):
+        // Axes: 0 = left stick X, 1 = left stick Y
+        // Buttons: 0=A, 1=B, 2=X, 3=Y, 4=LB, 5=RB, 6=LT, 7=RT,
+        //          8=Back/View, 9=Start/Menu, 10=L3, 11=R3,
+        //          12=DPad Up, 13=DPad Down, 14=DPad Left, 15=DPad Right
+
+        // Apply dead zone to stick axes
+        const DEAD_ZONE = 0.15;
+        const rawX = gp.axes[0] || 0;
+        const rawY = gp.axes[1] || 0;
+        this._gpAxisX = Math.abs(rawX) > DEAD_ZONE ? rawX : 0;
+        this._gpAxisY = Math.abs(rawY) > DEAD_ZONE ? -rawY : 0; // invert Y (stick down = negative in game)
+
+        // Save previous buttons for just-pressed detection
+        Object.assign(this._gpPrevButtons, this._gpButtons);
+
+        // Read buttons — pressed if value > 0.5 (handles analog triggers)
+        for (let i = 0; i < gp.buttons.length; i++) {
+            this._gpButtons[i] = gp.buttons[i].pressed || gp.buttons[i].value > 0.5;
+        }
+    }
+
+    _gpButtonDown(idx) {
+        return !!this._gpButtons[idx];
+    }
+
+    _gpButtonJustPressed(idx) {
+        return !!this._gpButtons[idx] && !this._gpPrevButtons[idx];
+    }
+
     update() {
+        // Keyboard just-pressed
         for (const key in this.keys) {
             this.justPressed[key] = this.keys[key] && !this._previousKeys[key];
         }
         Object.assign(this._previousKeys, this.keys);
+
+        // Poll gamepad
+        this._pollGamepad();
     }
 
     isDown(code) {
@@ -136,49 +221,79 @@ export class Input {
         return !!this.justPressed[code];
     }
 
-    // Directional helpers — keyboard OR touch joystick
+    // ---- Unified directional helpers (keyboard | touch | gamepad) ----
     get left() {
         if (this.touchActive && this.touchDx < -0.2) return true;
+        if (this._gpAxisX < -0.2 || this._gpButtonDown(14)) return true; // DPad Left
         return this.isDown('ArrowLeft') || this.isDown('KeyA');
     }
     get right() {
         if (this.touchActive && this.touchDx > 0.2) return true;
+        if (this._gpAxisX > 0.2 || this._gpButtonDown(15)) return true; // DPad Right
         return this.isDown('ArrowRight') || this.isDown('KeyD');
     }
     get up() {
         if (this.touchActive && this.touchDy > 0.2) return true;
+        if (this._gpAxisY > 0.2 || this._gpButtonDown(12)) return true; // DPad Up
         return this.isDown('ArrowUp') || this.isDown('KeyW');
     }
     get down() {
         if (this.touchActive && this.touchDy < -0.2) return true;
+        if (this._gpAxisY < -0.2 || this._gpButtonDown(13)) return true; // DPad Down
         return this.isDown('ArrowDown') || this.isDown('KeyS');
     }
-    // Analog magnitude for touch (0..1)
+
+    // Analog magnitude — prioritizes touch > gamepad > keyboard
     get axisX() {
         if (this.touchActive) return this.touchDx;
+        if (this._gpConnected && (Math.abs(this._gpAxisX) > 0.1 || this._gpButtonDown(14) || this._gpButtonDown(15))) {
+            if (this._gpButtonDown(14)) return -1;
+            if (this._gpButtonDown(15)) return 1;
+            return this._gpAxisX;
+        }
         return (this.right ? 1 : 0) - (this.left ? 1 : 0);
     }
     get axisY() {
         if (this.touchActive) return this.touchDy;
+        if (this._gpConnected && (Math.abs(this._gpAxisY) > 0.1 || this._gpButtonDown(12) || this._gpButtonDown(13))) {
+            if (this._gpButtonDown(12)) return 1;
+            if (this._gpButtonDown(13)) return -1;
+            return this._gpAxisY;
+        }
         return (this.up ? 1 : 0) - (this.down ? 1 : 0);
     }
+
     get fire() {
+        // A, X, RB, RT
+        if (this._gpButtonDown(0) || this._gpButtonDown(2) ||
+            this._gpButtonDown(5) || this._gpButtonDown(7)) return true;
         return this.touchFire || this.isDown('Space') || this.isDown('KeyZ');
     }
+
     get start() {
-        // Any tap also starts the game on touch devices
+        // A button only — Start/Menu is reserved for pause
+        if (this._gpButtonJustPressed(0)) return true;
         if (this._startTouchTriggered) {
             this._startTouchTriggered = false;
             return true;
         }
         return this.wasPressed('Enter') || this.wasPressed('Space');
     }
+
     get pause() {
+        // Start/Menu (9) or Back/View (8)
+        if (this._gpButtonJustPressed(9) || this._gpButtonJustPressed(8)) return true;
         return this.wasPressed('KeyP') || this.wasPressed('Escape');
+    }
+
+    get isGamepadActive() {
+        return this._gpConnected;
     }
 
     destroy() {
         window.removeEventListener('keydown', this._onKeyDown);
         window.removeEventListener('keyup', this._onKeyUp);
+        window.removeEventListener('gamepadconnected', this._onGamepadConnected);
+        window.removeEventListener('gamepaddisconnected', this._onGamepadDisconnected);
     }
 }
