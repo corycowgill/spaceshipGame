@@ -161,6 +161,50 @@ export class Audio {
         this._playTone(660, 0.08, 'square', 0.15);
     }
 
+    graze() {
+        // High ping
+        this._playTone(1760, 0.05, 'triangle', 0.15);
+        this._playTone(2200, 0.04, 'sine', 0.1);
+    }
+
+    bomb() {
+        if (!this.initialized) return;
+        // Deep rumble + rising sweep
+        this._playNoise(1.0, 0.6);
+        this._playTone(60, 0.8, 'sawtooth', 0.4);
+        // Rising pitch sweep
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(110, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.4);
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.5);
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+        osc.start(this.ctx.currentTime);
+        osc.stop(this.ctx.currentTime + 0.5);
+    }
+
+    phaseTransition() {
+        if (!this.initialized) return;
+        // Dramatic descending alarm
+        const freqs = [440, 330, 220];
+        freqs.forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'square';
+            osc.frequency.value = freq;
+            const start = this.ctx.currentTime + i * 0.12;
+            gain.gain.setValueAtTime(0.25, start);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.15);
+            osc.connect(gain);
+            gain.connect(this.sfxGain);
+            osc.start(start);
+            osc.stop(start + 0.15);
+        });
+    }
+
     // Background music - driving chiptune loop
     startMusic(stage = 0) {
         if (!this.initialized) return;

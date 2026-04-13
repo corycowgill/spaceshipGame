@@ -365,11 +365,18 @@ export class Boss {
         }
 
         // Weapon ports pulse brighter near firing
-        const portPulse = Math.max(0, 1 - this.fireTimer * 3);
+        // Telegraph: ports glow brighter and larger as fireTimer approaches 0
+        const portPulse = Math.max(0, 1 - this.fireTimer * 4);
         for (const port of this.ports) {
-            port.material.opacity = 0.4 + portPulse * 0.6;
-            const ps = 1 + portPulse * 0.5;
+            port.material.opacity = 0.3 + portPulse * 0.7;
+            const ps = 1 + portPulse * 0.9;
             port.scale.set(this.size * ps, this.size * ps, 1);
+            // Shift color toward bright red right before firing
+            if (portPulse > 0.7) {
+                port.material.color.setHex(0xff4400);
+            } else {
+                port.material.color.setHex(COLORS.BOSS_PORT);
+            }
         }
 
         // Damage color lerp - body gets redder as HP drops

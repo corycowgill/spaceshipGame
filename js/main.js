@@ -68,6 +68,14 @@ class Game {
         // Graze tracking
         this.grazeTimer = 0; // cooldown between graze sounds
 
+        // Score milestones for extra lives (unlocked once each)
+        this.milestones = [50000, 150000, 300000, 500000];
+        this.milestonesHit = 0;
+
+        // Slow-motion scale (1.0 = normal, 0.3 = slo-mo)
+        this.timeScale = 1.0;
+        this.timeScaleTarget = 1.0;
+
         // Timing
         this.lastTime = 0;
         this.frameDt = 1 / 60;
@@ -103,11 +111,15 @@ class Game {
     _loop(time) {
         requestAnimationFrame((t) => this._loop(t));
 
-        const dt = Math.min((time - this.lastTime) / 1000, 0.05); // Cap dt
+        const realDt = Math.min((time - this.lastTime) / 1000, 0.05);
         this.lastTime = time;
 
+        // Smooth time scale toward target
+        this.timeScale += (this.timeScaleTarget - this.timeScale) * Math.min(1, realDt * 8);
+
+        const dt = realDt * this.timeScale;
         this.input.update();
-        this.frameDt = dt; // Store for use in collision checks
+        this.frameDt = dt;
         this._update(dt);
         this._render();
     }
@@ -210,7 +222,7 @@ class Game {
                 this.bullets.clearEnemyBullets();
                 this.hud.flash();
                 this.hud.shake(6, 0.4);
-                this.audio.bossWarning();
+                this.audio.phaseTransition();
             };
             this.audio.startMusic(this.currentStage);
         }
@@ -250,7 +262,7 @@ class Game {
 
         // Update particles and powerups
         this.particles.update(dt);
-        this.powerups.update(dt);
+        this.powerups.update(dt, this.player.alive ? this.player.x : null, this.player.alive ? this.player.y : null);
 
         // Collision detection
         this._checkBossCollisions();
@@ -308,10 +320,36 @@ class Game {
         this.particles.update(dt);
         this.background.update(dt);
 
-        if (this.stateTimer > 2 && this.input.start) {
-            this.audio.menuSelect();
-            this._setState(GAME_STATE.TITLE);
-            this._cleanup();
+        if (this.stateTimer > 2) {
+            if (this._canContinue && this.input.bomb) {
+                // Continue: reset score to floor of last milestone, reset lives/bombs
+                this._usedContinue = true;
+                this._canContinue = false;
+                this.score = Math.floor(this.score / 2); // score penalty
+                this.lives = CONFIG.MAX_LIVES;
+                this.bombs = CONFIG.BOMB_START;
+                this.combo = 0;
+                this.comboMultiplier = 1;
+                this.player.reset();
+                this.player.invincibleTimer = CONFIG.INVINCIBILITY_TIME;
+                this.bullets.clearEnemyBullets();
+                this.audio.menuSelect();
+                // Resume playing at the start of the current stage
+                if (this.boss && this.boss.active) {
+                    this._setState(GAME_STATE.BOSS_FIGHT);
+                    this.audio.startMusic(this.currentStage);
+                } else {
+                    this._setState(GAME_STATE.PLAYING);
+                    this.audio.startMusic(this.currentStage);
+                }
+                return;
+            }
+            if (this.input.start) {
+                this.audio.menuSelect();
+                this._setState(GAME_STATE.TITLE);
+                this._cleanup();
+                this._usedContinue = false;
+            }
         }
     }
 
@@ -374,7 +412,7 @@ class Game {
 
         // Update particles and powerups
         this.particles.update(dt);
-        this.powerups.update(dt);
+        this.powerups.update(dt, this.player.alive ? this.player.x : null, this.player.alive ? this.player.y : null);
 
         // Collision detection
         this._checkEnemyCollisions();
@@ -404,10 +442,13 @@ class Game {
                 // Game over
                 this._setState(GAME_STATE.GAME_OVER);
                 this.audio.stopMusic();
+                // Save high score
                 if (this.score > this.highScore) {
                     this.highScore = this.score;
                     localStorage.setItem('voidStriker_highScore', this.highScore.toString());
                 }
+                // Allow one continue per game, with score reset penalty
+                this._canContinue = !this._usedContinue;
             }
         }
     }
@@ -595,9 +636,10 @@ class Game {
 
             // Screen-wide explosion effect
             this.particles.bigExplosion(this.player.x, this.player.y);
-            this.audio.bigExplosion();
+            this.audio.bomb();
             this.hud.flash();
             this.hud.shake(12, 0.6);
+            this.hud.addPopup(this.player.x, this.player.y + 1, 'BOMB!', '#ffaa00', 22);
         }
     }
 
@@ -646,9 +688,12 @@ class Game {
             };
             // In graze zone but NOT hitting player
             if (this._aabb(gz, bb) && !this._aabb(pb, bb)) {
-                this.score += CONFIG.SCORE_GRAZE * this.comboMultiplier;
-                this.grazeTimer = 0.08; // prevent multi-graze per frame flood
+                const pts = CONFIG.SCORE_GRAZE * this.comboMultiplier;
+                this.score += pts;
+                this.grazeTimer = 0.08;
                 this.particles.sparkle(bullet.x, bullet.y, 0xffffff);
+                this.audio.graze();
+                this.hud.addPopup(this.player.x + 0.8, this.player.y + 0.8, `+${pts}`, '#88ffff', 10);
                 return;
             }
         }
@@ -658,7 +703,18 @@ class Game {
 
     _onEnemyDestroyed(enemy) {
         this._addComboKill();
-        this.score += enemy.score * this.comboMultiplier;
+        const points = enemy.score * this.comboMultiplier;
+        this.score += points;
+
+        // Floating score popup
+        const color = this.comboMultiplier >= 6 ? '#ff4400'
+            : this.comboMultiplier >= 4 ? '#ffaa00'
+            : this.comboMultiplier >= 2 ? '#ffdd00'
+            : '#ffffff';
+        const size = 10 + Math.min(8, this.comboMultiplier);
+        const text = this.comboMultiplier > 1 ? `${points}` : `${points}`;
+        this.hud.addPopup(enemy.x, enemy.y, text, color, size);
+
         const scale = enemy.size > 1.2 ? 1.4 : 1.0;
         this.particles.explode(enemy.x, enemy.y, CONFIG.EXPLOSION_PARTICLE_COUNT, scale);
         this.audio.explosion();
@@ -666,9 +722,23 @@ class Game {
             this.hud.shake(3, 0.15);
         }
 
-        // Power-up drop (guaranteed for last enemy in wave if nothing dropped yet)
+        // Power-up drop
         if (Math.random() < CONFIG.POWERUP_DROP_CHANCE) {
             this.powerups.spawn(enemy.x, enemy.y);
+        }
+
+        // Check score milestones
+        this._checkScoreMilestones();
+    }
+
+    _checkScoreMilestones() {
+        while (this.milestonesHit < this.milestones.length &&
+               this.score >= this.milestones[this.milestonesHit]) {
+            this.milestonesHit++;
+            this.lives = Math.min(this.lives + 1, CONFIG.MAX_LIVES + 3);
+            this.audio.powerUp();
+            this.hud.addPopup(this.player.x, this.player.y + 2, '1UP!', '#ff44aa', 22);
+            this.hud.flash();
         }
     }
 
@@ -682,6 +752,9 @@ class Game {
             this.combo = 0;
             this.comboMultiplier = 1;
             this.comboTimer = 0;
+            // Dramatic slo-mo on death
+            this.timeScale = 0.2;
+            this.timeScaleTarget = 1.0;
         }
     }
 
@@ -718,6 +791,11 @@ class Game {
         this.combo = 0;
         this.comboMultiplier = 1;
         this.comboTimer = 0;
+        this.milestonesHit = 0;
+        this.timeScale = 1.0;
+        this.timeScaleTarget = 1.0;
+        this._canContinue = false;
+        this._usedContinue = false;
         this.currentStage = 0;
         this.player.reset();
         this.background.setStageTheme(0);

@@ -194,11 +194,29 @@ class PowerUp {
         this._rainbowColor = new THREE.Color();
     }
 
-    update(dt) {
+    update(dt, playerX = null, playerY = null) {
         if (!this.active || !this.mesh) return;
         this.age += dt;
-        this.y -= CONFIG.POWERUP_FALL_SPEED * dt;
-        this.x += Math.sin(this.age * 3) * 0.5 * dt;
+
+        // Magnet: if player is within range, attract toward them
+        const MAGNET_RANGE = 5.0;
+        const MAGNET_STRENGTH = 18;
+        if (playerX !== null && playerY !== null) {
+            const dx = playerX - this.x;
+            const dy = playerY - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < MAGNET_RANGE && dist > 0.01) {
+                const pull = (1 - dist / MAGNET_RANGE) * MAGNET_STRENGTH;
+                this.x += (dx / dist) * pull * dt;
+                this.y += (dy / dist) * pull * dt;
+            } else {
+                this.y -= CONFIG.POWERUP_FALL_SPEED * dt;
+                this.x += Math.sin(this.age * 3) * 0.5 * dt;
+            }
+        } else {
+            this.y -= CONFIG.POWERUP_FALL_SPEED * dt;
+            this.x += Math.sin(this.age * 3) * 0.5 * dt;
+        }
 
         const rot = this.age * 2;
         this.mesh.position.set(this.x, this.y, 3);
@@ -278,14 +296,14 @@ export class PowerUpManager {
         this.powerups.push(powerup);
     }
 
-    update(dt) {
+    update(dt, playerX = null, playerY = null) {
         for (let i = this.powerups.length - 1; i >= 0; i--) {
             const p = this.powerups[i];
             if (!p.active) {
                 this.powerups.splice(i, 1);
                 continue;
             }
-            p.update(dt);
+            p.update(dt, playerX, playerY);
             if (!p.active) {
                 this.powerups.splice(i, 1);
             }

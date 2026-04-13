@@ -72,22 +72,42 @@ const STAGE_4_WAVES = [
 ];
 
 const STAGE_5_WAVES = [
-    // Final Mothership - Everything at once
-    { type: ENEMY_TYPE.FIGHTER, count: 10, formation: 'v', delay: 2, speed: 8 },
-    { type: ENEMY_TYPE.CRUISER, count: 4, formation: 'line', delay: 2, speed: 4, extras: { hp: 18 } },
-    { type: ENEMY_TYPE.BOMBER, count: 5, formation: 'v', delay: 2, speed: 6 },
-    { type: ENEMY_TYPE.TURRET, count: 5, formation: 'turret', delay: 3, speed: 2, extras: { fireRate: 0.8, hp: 12 } },
-    { type: ENEMY_TYPE.DART, count: 15, formation: 'charge', delay: 2, speed: 30 },
-    { type: ENEMY_TYPE.FIGHTER, count: 10, formation: 'spiral', delay: 2, speed: 6 },
-    { type: ENEMY_TYPE.CRUISER, count: 3, formation: 'v', delay: 2, speed: 4, extras: { hp: 20 } },
-    { type: ENEMY_TYPE.BOMBER, count: 6, formation: 'line', delay: 2, speed: 6 },
-    { type: ENEMY_TYPE.FIGHTER, count: 8, formation: 'circle', delay: 2, speed: 5, extras: { radius: 7 } },
-    { type: ENEMY_TYPE.TURRET, count: 4, formation: 'turret', delay: 2, speed: 2, extras: { fireRate: 0.7, hp: 15 } },
-    { type: ENEMY_TYPE.CRUISER, count: 4, formation: 'line', delay: 2, speed: 4, extras: { hp: 25 } },
-    { type: ENEMY_TYPE.DART, count: 10, formation: 'dive', delay: 2, speed: 20 },
-    { type: ENEMY_TYPE.FIGHTER, count: 12, formation: 'sine', delay: 2, speed: 7, extras: { amplitude: 7 } },
-    { type: ENEMY_TYPE.BOMBER, count: 6, formation: 'v', delay: 2, speed: 6 },
-    { type: ENEMY_TYPE.CRUISER, count: 5, formation: 'v', delay: 0, speed: 5, extras: { hp: 20 } },
+    // Final Mothership - Unique compositions, not just "more of the same"
+
+    // Opening: escort formation (cruiser protected by fighters)
+    { type: ENEMY_TYPE.FIGHTER, count: 6, formation: 'v', delay: 0.3, speed: 7 },
+    { type: ENEMY_TYPE.CRUISER, count: 1, formation: 'line', delay: 2.5, x: 0, speed: 4, extras: { hp: 20 } },
+
+    // Twin pincer — turrets from both sides while darts charge the middle
+    { type: ENEMY_TYPE.TURRET, count: 2, formation: 'turret', delay: 0.5, x: -7, speed: 2, extras: { fireRate: 0.9, hp: 14 } },
+    { type: ENEMY_TYPE.TURRET, count: 2, formation: 'turret', delay: 0.3, x: 7, speed: 2, extras: { fireRate: 0.9, hp: 14 } },
+    { type: ENEMY_TYPE.DART, count: 6, formation: 'charge', delay: 3.5, speed: 28 },
+
+    // Wave of bombers in tight formation
+    { type: ENEMY_TYPE.BOMBER, count: 5, formation: 'line', delay: 3, speed: 5 },
+
+    // Breather
+    { type: ENEMY_TYPE.FIGHTER, count: 4, formation: 'sine', delay: 2.5, speed: 6, extras: { amplitude: 5, frequency: 3 } },
+
+    // Triple cruiser line (tank wave)
+    { type: ENEMY_TYPE.CRUISER, count: 3, formation: 'line', delay: 4, speed: 4, extras: { hp: 24 } },
+
+    // Circle trap — fighters orbit while bombers come in
+    { type: ENEMY_TYPE.FIGHTER, count: 8, formation: 'circle', delay: 1, speed: 5, extras: { radius: 7, centerY: 8 } },
+    { type: ENEMY_TYPE.BOMBER, count: 3, formation: 'v', delay: 3.5, speed: 6 },
+
+    // Rushing darts from both sides
+    { type: ENEMY_TYPE.DART, count: 8, formation: 'arc_left', delay: 0.5, speed: 15 },
+    { type: ENEMY_TYPE.DART, count: 8, formation: 'arc_right', delay: 3, speed: 15 },
+
+    // Elite fighter spiral
+    { type: ENEMY_TYPE.FIGHTER, count: 12, formation: 'spiral', delay: 3.5, speed: 6 },
+
+    // Final assault: everything at once
+    { type: ENEMY_TYPE.CRUISER, count: 2, formation: 'line', delay: 0.2, speed: 4, extras: { hp: 22 } },
+    { type: ENEMY_TYPE.BOMBER, count: 3, formation: 'v', delay: 0.2, speed: 6 },
+    { type: ENEMY_TYPE.FIGHTER, count: 8, formation: 'sine', delay: 0.2, speed: 7, extras: { amplitude: 6 } },
+    { type: ENEMY_TYPE.DART, count: 6, formation: 'dive', delay: 0, speed: 18 },
 ];
 
 export const STAGES = [

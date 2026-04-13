@@ -13,6 +13,32 @@ export class HUD {
         this.flashTimer = 0;
         this.shakeTimer = 0;
         this.shakeIntensity = 0;
+
+        // Floating score popups
+        this.popups = [];
+    }
+
+    // Convert game world (x,y) to HUD pixel coords
+    _worldToCanvas(wx, wy) {
+        const px = (wx + CONFIG.GAME_WIDTH / 2) / CONFIG.GAME_WIDTH * this.canvas.width;
+        const py = (-wy + CONFIG.GAME_HEIGHT / 2) / CONFIG.GAME_HEIGHT * this.canvas.height;
+        return { x: px, y: py };
+    }
+
+    addPopup(worldX, worldY, text, color = '#ffffff', size = 14) {
+        const p = this._worldToCanvas(worldX, worldY);
+        this.popups.push({
+            x: p.x,
+            y: p.y,
+            text,
+            color,
+            size,
+            life: 0.9,
+            maxLife: 0.9,
+            vy: -30, // drift upward
+        });
+        // Cap array length
+        if (this.popups.length > 30) this.popups.shift();
     }
 
     flash() {
@@ -43,6 +69,10 @@ export class HUD {
             case GAME_STATE.BOSS_WARNING:
             case GAME_STATE.BOSS_FIGHT:
                 this._drawGameHUD(ctx, w, h, game);
+                this._drawPopups(ctx);
+                if (game.currentStage === 0 && game.stateTimer < 12) {
+                    this._drawTutorialHint(ctx, w, h, game);
+                }
                 if (game.input && game.input.isTouchDevice) {
                     this._drawTouchControls(ctx, w, h, game);
                 }
@@ -80,6 +110,33 @@ export class HUD {
     update(dt) {
         if (this.flashTimer > 0) this.flashTimer -= dt;
         if (this.shakeTimer > 0) this.shakeTimer -= dt;
+
+        // Update popups
+        for (let i = this.popups.length - 1; i >= 0; i--) {
+            const p = this.popups[i];
+            p.life -= dt;
+            p.y += p.vy * dt;
+            p.vy *= 0.95;
+            if (p.life <= 0) this.popups.splice(i, 1);
+        }
+    }
+
+    _drawPopups(ctx) {
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        for (const p of this.popups) {
+            const alpha = Math.min(1, p.life / p.maxLife * 2);
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = p.color;
+            ctx.font = `bold ${p.size}px "Courier New", monospace`;
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = 4;
+            ctx.fillText(p.text, p.x, p.y);
+        }
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+        ctx.restore();
     }
 
     getShakeOffset() {
@@ -334,7 +391,19 @@ export class HUD {
         ctx.fillText(`FINAL SCORE: ${game.score}`, w / 2, h / 2 + 10);
 
         if (game.stateTimer > 2) {
-            if (Math.floor(game.stateTimer * 2) % 2 === 0) {
+            const blink = Math.floor(game.stateTimer * 2) % 2 === 0;
+            if (game._canContinue) {
+                if (blink) {
+                    ctx.fillStyle = '#ffaa00';
+                    ctx.font = 'bold 18px "Courier New", monospace';
+                    const isGp = game.input && game.input.isGamepadActive;
+                    ctx.fillText(isGp ? 'PRESS B/Y TO CONTINUE' : 'PRESS X/C TO CONTINUE', w / 2, h / 2 + 55);
+                }
+                ctx.fillStyle = '#666666';
+                ctx.font = '12px "Courier New", monospace';
+                ctx.fillText('(SCORE WILL BE HALVED)', w / 2, h / 2 + 80);
+                ctx.fillText('PRESS ENTER TO QUIT', w / 2, h / 2 + 100);
+            } else if (blink) {
                 ctx.fillStyle = '#888888';
                 ctx.font = '16px "Courier New", monospace';
                 ctx.fillText('PRESS ENTER TO CONTINUE', w / 2, h / 2 + 60);
@@ -374,6 +443,27 @@ export class HUD {
             }
         }
         ctx.globalAlpha = 1;
+        ctx.restore();
+    }
+
+    _drawTutorialHint(ctx, w, h, game) {
+        // Fade in then out
+        const t = game.stateTimer;
+        let alpha;
+        if (t < 2) alpha = t / 2;
+        else if (t > 10) alpha = Math.max(0, 1 - (t - 10) / 2);
+        else alpha = 1;
+        if (alpha <= 0) return;
+
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.85;
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 13px "Courier New", monospace';
+        ctx.fillStyle = '#ffdd00';
+        const isGamepad = game.input && game.input.isGamepadActive;
+        const bombHint = isGamepad ? 'B/Y/LB: BOMB' : 'X or C: BOMB';
+        const focusHint = isGamepad ? 'LT: FOCUS' : 'SHIFT: FOCUS';
+        ctx.fillText(bombHint + '   ' + focusHint, w / 2, h - 58);
         ctx.restore();
     }
 
