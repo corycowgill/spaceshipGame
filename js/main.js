@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CONFIG, GAME_STATE, WEAPON_TYPES } from './config.js';
+import { CONFIG, GAME_STATE, WEAPON_TYPES, WEAPON_NAMES } from './config.js';
 import { Input } from './input.js';
 import { Audio } from './audio.js';
 import { Background } from './starfield.js';
@@ -737,7 +737,8 @@ class Game {
             this.milestonesHit++;
             this.lives = Math.min(this.lives + 1, CONFIG.MAX_LIVES + 3);
             this.audio.powerUp();
-            this.hud.addPopup(this.player.x, this.player.y + 2, '1UP!', '#ff44aa', 22);
+            this.hud.announce('1UP!', '#ff44aa',
+                `${this.milestones[this.milestonesHit - 1].toLocaleString()} PTS`, '#ffffff');
             this.hud.flash();
         }
     }
@@ -764,20 +765,45 @@ class Game {
         this.audio.powerUp();
         this.score += CONFIG.SCORE_POWERUP;
 
+        const hexToCSS = (hex) => '#' + hex.toString(16).padStart(6, '0');
+
         switch (info.type) {
-            case 'weapon':
+            case 'weapon': {
+                const prevType = this.player.weaponType;
+                const prevLevel = this.player.weaponLevel;
                 this.player.upgradeWeapon(info.weapon);
+                const name = WEAPON_NAMES[this.player.weaponType];
+                const level = this.player.weaponLevel;
+                const color = hexToCSS(info.color);
+
+                if (prevType !== this.player.weaponType) {
+                    this.hud.announce(name, color, `LEVEL ${level}`, '#cccccc');
+                } else if (level > prevLevel) {
+                    this.hud.announce(`${name} LV${level}`, color, 'POWER UP!', '#ffdd00');
+                } else {
+                    this.hud.announce(name, color, `MAX LEVEL`, '#ffdd00');
+                }
                 break;
+            }
             case 'upgrade':
                 if (this.player.weaponLevel < 3) {
                     this.player.weaponLevel++;
+                    const name = WEAPON_NAMES[this.player.weaponType];
+                    this.hud.announce(
+                        `${name} LV${this.player.weaponLevel}`,
+                        '#ffdd00', 'POWER UP!', '#ffffff',
+                    );
+                } else {
+                    this.hud.announce('MAX POWER', '#ffdd00', '', '');
                 }
                 break;
             case 'life':
-                this.lives = Math.min(this.lives + 1, CONFIG.MAX_LIVES + 2);
+                this.lives = Math.min(this.lives + 1, CONFIG.MAX_LIVES + 3);
+                this.hud.announce('EXTRA LIFE', '#ff44aa', '', '');
                 break;
         }
 
+        this._checkScoreMilestones();
         powerup.destroy();
     }
 

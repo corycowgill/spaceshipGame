@@ -16,6 +16,9 @@ export class HUD {
 
         // Floating score popups
         this.popups = [];
+
+        // Center-screen announcements (power-up name, level up, etc.)
+        this.announcements = [];
     }
 
     // Convert game world (x,y) to HUD pixel coords
@@ -39,6 +42,18 @@ export class HUD {
         });
         // Cap array length
         if (this.popups.length > 30) this.popups.shift();
+    }
+
+    announce(text, color = '#ffffff', subtext = '', subcolor = '#aaaaaa') {
+        this.announcements.push({
+            text,
+            color,
+            subtext,
+            subcolor,
+            life: 1.4,
+            maxLife: 1.4,
+        });
+        if (this.announcements.length > 3) this.announcements.shift();
     }
 
     flash() {
@@ -70,6 +85,7 @@ export class HUD {
             case GAME_STATE.BOSS_FIGHT:
                 this._drawGameHUD(ctx, w, h, game);
                 this._drawPopups(ctx);
+                this._drawAnnouncements(ctx, w, h);
                 if (game.currentStage === 0 && game.stateTimer < 12) {
                     this._drawTutorialHint(ctx, w, h, game);
                 }
@@ -119,6 +135,12 @@ export class HUD {
             p.vy *= 0.95;
             if (p.life <= 0) this.popups.splice(i, 1);
         }
+
+        // Update announcements
+        for (let i = this.announcements.length - 1; i >= 0; i--) {
+            this.announcements[i].life -= dt;
+            if (this.announcements[i].life <= 0) this.announcements.splice(i, 1);
+        }
     }
 
     _drawPopups(ctx) {
@@ -133,6 +155,48 @@ export class HUD {
             ctx.shadowColor = p.color;
             ctx.shadowBlur = 4;
             ctx.fillText(p.text, p.x, p.y);
+        }
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+        ctx.restore();
+    }
+
+    _drawAnnouncements(ctx, w, h) {
+        if (this.announcements.length === 0) return;
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // Stack announcements with slight vertical offset
+        let yOffset = 0;
+        for (const a of this.announcements) {
+            const t = 1 - a.life / a.maxLife; // 0→1 over lifetime
+            // Punch-in: scale from 1.5→1.0 in first 15% of life, then hold
+            const scaleT = t < 0.15 ? 1.5 - (t / 0.15) * 0.5 : 1.0;
+            // Fade out in last 40%
+            const alpha = t > 0.6 ? 1 - (t - 0.6) / 0.4 : Math.min(1, t / 0.05);
+            const baseY = h * 0.38 + yOffset;
+
+            ctx.globalAlpha = alpha;
+
+            // Main text
+            const fontSize = Math.round(26 * scaleT);
+            ctx.font = `bold ${fontSize}px "Courier New", monospace`;
+            ctx.fillStyle = a.color;
+            ctx.shadowColor = a.color;
+            ctx.shadowBlur = 12;
+            ctx.fillText(a.text, w / 2, baseY);
+
+            // Subtext (weapon level, etc.)
+            if (a.subtext) {
+                ctx.shadowBlur = 0;
+                ctx.font = '14px "Courier New", monospace';
+                ctx.fillStyle = a.subcolor;
+                ctx.fillText(a.subtext, w / 2, baseY + 22);
+                yOffset += 50;
+            } else {
+                yOffset += 34;
+            }
         }
         ctx.shadowBlur = 0;
         ctx.globalAlpha = 1;
